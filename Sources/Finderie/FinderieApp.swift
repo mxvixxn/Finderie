@@ -56,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         switch action {
         case .prepare: model.prepareNow(items)
+        case .shrink: model.shrinkNow(items)
         case .compress: model.compressNow(items)
         case .extract: model.extractNow(items)
         }

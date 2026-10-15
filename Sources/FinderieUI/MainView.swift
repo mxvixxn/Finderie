@@ -20,10 +20,12 @@ public struct MainView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .disabled(model.prep?.isBusy == true)
+            .disabled(model.isToolBusy)
 
             if settings.tab == .prep {
                 PrepScreen(model: model)
+            } else if settings.tab == .shrink {
+                ShrinkScreen(model: model)
             } else if let preview = model.preview {
                 PreviewView(preview: preview, model: model)
             } else if model.jobs.isEmpty {
@@ -175,7 +177,12 @@ struct FileDropDelegate: DropDelegate {
     let model: AppModel
 
     func validateDrop(info: DropInfo) -> Bool {
-        let free = model.settings.tab == .prep ? model.prep?.isBusy != true : model.preview == nil
+        let free: Bool
+        switch model.settings.tab {
+        case .prep: free = model.prep?.isBusy != true
+        case .shrink: free = model.shrink?.isBusy != true
+        case .zip: free = model.preview == nil
+        }
         return free && info.hasItemsConforming(to: [.fileURL])
     }
 

@@ -20,6 +20,21 @@ Windows로 파일을 보내기 전에 쓰는 Mac 도구. 받는 사람 컴퓨터
 macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하므로, 이름을 만들고 바꾸는 일은 POSIX 함수로 한다
 (`Sources/ZipCore/SendPrep.swift`).
 
+## 용량 줄이기
+
+메일·메신저 첨부 한도에 맞게 파일을 줄인다. 단계(조금 / 적당히 / 많이)를 고르면 결과 크기를 미리 예상해 보여 준다.
+
+| 종류 | 하는 일 |
+|---|---|
+| 사진 (JPG·HEIC·PNG·TIFF·BMP) | 긴 변 3840 / 2560 / 1600px, 화질 낮추기. TIFF·BMP는 JPG로. 사진 정보 유지 |
+| 영상 (MOV·MP4·M4V) | H.264 MP4 1080p / 720p / 540p로 다시 인코딩 |
+| PDF | 안의 이미지 해상도·화질 낮추기 (미리보기의 '파일 크기 줄이기'와 같은 Quartz 필터) |
+| Office 문서 (docx·pptx·xlsx) | 풀어서 `media` 폴더의 사진만 줄이고 다시 묶기 |
+| 소리 (WAV·AIFF) | M4A(AAC)로 |
+
+5% 넘게 작아지지 않는 파일은 그대로 둔다. **복사본 만들기**는 `용량 줄인 파일` 폴더에, **원본 바꾸기**는 원래 파일을
+휴지통으로 옮긴다 (`Sources/ShrinkCore`).
+
 ## 압축 기능
 
 - **한글 이름 호환**: 압축할 때 이름 인코딩을 고를 수 있다.
@@ -35,7 +50,7 @@ macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하�
 
 ## Finder에서 바로 쓰기
 
-파일이나 폴더를 우클릭 → **Windows로 보낼 준비** / **Finderie로 압축** / **Finderie로 풀기**(ZIP을 골랐을 때).
+파일이나 폴더를 우클릭 → **Windows로 보낼 준비** / **Finderie로 용량 줄이기** / **Finderie로 압축** / **Finderie로 풀기**(ZIP을 골랐을 때).
 압축은 지금 설정(한글 이름 방식, 속도)대로 바로 하고, 풀기는 미리보기 없이 기본 풀 위치에 푼다.
 
 - 메뉴 맨 위에 나오는 항목은 Finder 확장(`Extension/`, 앱 안의 `FinderieExtension.appex`)이 넣는다.
@@ -51,6 +66,8 @@ macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하�
 swift build -c release --product finderie-cli   # 시험용 명령줄 도구
 .build/release/finderie-cli scan <파일...>        # 보내기 준비 검사만
 python3 windows-test/make_prep_fixture.py <폴더>  # 문제가 고루 섞인 시험 폴더 만들기
+.build/release/finderie-cli shrink --dry <파일...>   # 용량 줄이기 예상만
+zsh windows-test/make_shrink_fixture.sh <폴더>     # 사진·영상·PDF·문서·소리 시험 폴더 만들기
 ```
 
 ## 구조

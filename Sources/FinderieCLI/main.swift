@@ -1,5 +1,6 @@
 import Foundation
 import ZipCore
+import ShrinkCore
 
 // 테스트용 명령줄 도구
 //   finderie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> <out.zip> <파일...>
@@ -7,6 +8,7 @@ import ZipCore
 //   finderie-cli list <in.zip>
 //   finderie-cli scan <파일...>
 //   finderie-cli prep [--in-place] [--skip names,junk,csv,heic] <파일...>
+//   finderie-cli shrink [--level 0|1|2] [--in-place] [--dry] <파일...>
 var args = Array(CommandLine.arguments.dropFirst())
 func fail(_ msg: String) -> Never { FileHandle.standardError.write((msg + "\n").data(using: .utf8)!); exit(1) }
 
@@ -35,11 +37,15 @@ do {
     let cmd = args.isEmpty ? "" : args.removeFirst()
     var mode = SendPrep.Mode.copy
     var fixes = Set(SendPrep.Fix.allCases)
-    if cmd == "prep" {
+    var level = Shrink.Level.medium
+    var dry = false
+    if cmd == "prep" || cmd == "shrink" {
         while let f = args.first, f.hasPrefix("--") {
             args.removeFirst()
             switch f {
             case "--in-place": mode = .inPlace
+            case "--level": level = Shrink.Level(rawValue: Int(args.removeFirst()) ?? 1) ?? .medium
+            case "--dry": dry = true
             case "--skip": for s in args.removeFirst().split(separator: ",") { fixes.remove(SendPrep.Fix(rawValue: String(s)) ?? .names) }
             default: fail("unknown flag \(f)")
             }
@@ -65,6 +71,15 @@ do {
         print("renamed=\(o.renamed) removed=\(o.removed) bom=\(o.bomAdded) converted=\(o.converted) trashed=\(o.trashed.count)")
         print("folder=\(o.folder?.path ?? "-")")
         for item in o.items { print("item=\(item.path)") }
+    case "shrink" where !args.isEmpty:
+        let report = try Shrink.scan(args.map { URL(fileURLWithPath: $0) })
+        print("files=\(report.fileCount) bytes=\(report.totalBytes) estimate=\(report.estimatedTotal(kinds: Set(Shrink.Kind.allCases), level: level))")
+        for i in report.items { print("\(i.kind.rawValue)\t\(i.path)\t\(i.size) → ~\(i.estimate(level))\t\(i.detail)") }
+        if dry { break }
+        let start = Date()
+        let o = try Shrink.apply(report, kinds: Set(Shrink.Kind.allCases), level: level, mode: mode)
+        print("before=\(o.before) after=\(o.after) shrunk=\(o.shrunk) kept=\(o.kept) failed=\(o.failed) trashed=\(o.trashed.count) \(String(format: "%.1fs", Date().timeIntervalSince(start)))")
+        print("folder=\(o.folder?.path ?? "-")")
     default:
         fail("usage: finderie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> out.zip files... | unzip in.zip | list in.zip")
     }

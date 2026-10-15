@@ -32,9 +32,15 @@ public enum ExtractDestination: String, CaseIterable, Identifiable, Sendable {
 /// 앱 설정. 값은 UserDefaults에 저장돼서 다음에 켜도 그대로다.
 /// 창 맨 위 탭
 public enum AppTab: String, CaseIterable, Identifiable, Sendable {
-    case prep, zip
+    case prep, shrink, zip
     public var id: String { rawValue }
-    var title: String { self == .prep ? "보내기 준비" : "압축" }
+    var title: String {
+        switch self {
+        case .prep: return "보내기 준비"
+        case .shrink: return "용량 줄이기"
+        case .zip: return "압축"
+        }
+    }
 }
 
 public final class AppSettings: ObservableObject {
@@ -152,6 +158,8 @@ public final class AppModel: ObservableObject {
     @Published var preview: PreviewModel?
     /// 보내기 준비 탭의 진행 상태 (nil이면 파일을 기다린다)
     @Published var prep: PrepModel?
+    /// 용량 줄이기 탭의 진행 상태
+    @Published var shrink: ShrinkModel?
     @Published var dragInfo: DragInfo?
     @Published var isDropTargeted = false
 
@@ -172,9 +180,10 @@ public final class AppModel: ObservableObject {
     /// chooseLocation이 true면(⌥ 누른 채 놓기) 저장 위치를 먼저 묻는다.
     public func accept(_ urls: [URL], chooseLocation: Bool = false) {
         guard !urls.isEmpty else { return }
-        if settings.tab == .prep {
-            startPrep(urls)
-            return
+        switch settings.tab {
+        case .prep: startPrep(urls); return
+        case .shrink: startShrink(urls); return
+        case .zip: break
         }
         let zips = urls.filter { $0.pathExtension.lowercased() == "zip" }
         if zips.count == urls.count {
@@ -203,9 +212,13 @@ public final class AppModel: ObservableObject {
 
     /// 파일 선택 창으로 고르기
     public func chooseFiles() {
-        let urls = Panels.pickItems(message: settings.tab == .prep
-            ? "Windows로 보낼 파일이나 폴더를 고르세요"
-            : "ZIP을 고르면 풀고, 다른 파일이나 폴더를 고르면 압축해요")
+        let message: String
+        switch settings.tab {
+        case .prep: message = "Windows로 보낼 파일이나 폴더를 고르세요"
+        case .shrink: message = "용량을 줄일 파일이나 폴더를 고르세요"
+        case .zip: message = "ZIP을 고르면 풀고, 다른 파일이나 폴더를 고르면 압축해요"
+        }
+        let urls = Panels.pickItems(message: message)
         accept(urls)
     }
 
@@ -215,6 +228,23 @@ public final class AppModel: ObservableObject {
         settings.tab = .prep
         startPrep(urls)
     }
+
+    /// Finder 우클릭 → "Finderie로 용량 줄이기"
+    public func shrinkNow(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        settings.tab = .shrink
+        startShrink(urls)
+    }
+
+    func startShrink(_ urls: [URL]) {
+        if shrink?.isBusy == true { return }
+        let model = ShrinkModel(urls: urls)
+        shrink = model
+        model.scan()
+    }
+
+    /// 지금 탭에서 일이 진행 중이면 탭을 바꾸거나 새 파일을 받지 않는다
+    var isToolBusy: Bool { prep?.isBusy == true || shrink?.isBusy == true }
 
     func startPrep(_ urls: [URL]) {
         if prep?.isBusy == true { return }

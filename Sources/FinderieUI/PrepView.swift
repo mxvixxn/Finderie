@@ -183,8 +183,17 @@ struct PrepScreen: View {
         if let prep = model.prep {
             PrepFlow(prep: prep, model: model)
         } else {
-            PrepDropWell(model: model)
-            PrepChecksCard()
+            ToolDropWell(model: model, targetedSymbol: "wand.and.stars", targetedTitle: "놓으면 검사해요",
+                         title: "Windows로 보낼 파일을 놓으세요",
+                         subtitle: "받는 사람 컴퓨터에서 깨지지 않게 미리 고쳐요") {
+                WandGlyph(size: 64)
+            }
+            ChecksCard(title: "이런 걸 검사해요", rows: [
+                ("character.textbox", "한글 이름", "자모가 풀린 이름, 못 쓰는 글자, 겹치는 이름"),
+                ("tablecells", "CSV 파일", "엑셀에서 한글이 깨지지 않게"),
+                ("photo", "HEIC 사진", "어디서나 열리는 JPG로"),
+                ("exclamationmark.triangle", "열 수 없는 파일", "Mac 전용 문서, 바로가기, 너무 긴 경로"),
+            ])
         }
     }
 }
@@ -216,30 +225,14 @@ struct PrepFlow: View {
         case .done(let report, let outcome, let zip):
             PrepDoneCard(prep: prep, model: model, report: report, outcome: outcome, zip: zip)
         case .failed(let message, let retry):
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "exclamationmark")
-                        .font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.warning)
-                        .frame(width: 36, height: 36).background(Theme.warning.opacity(0.13), in: Circle())
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("준비하지 못했어요").font(.system(size: 14, weight: .bold))
-                        Text(message).font(.system(size: 12)).foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+            ToolFailureCard(title: "준비하지 못했어요", message: message) {
+                Button("처음으로") { model.prep = nil }
+                if let retry {
+                    Button("보고서로 돌아가기") { prep.phase = .ready(retry) }
+                } else {
+                    Button("다시 검사") { prep.scan() }
                 }
-                HStack {
-                    Button("처음으로") { model.prep = nil }
-                    if let retry {
-                        Button("보고서로 돌아가기") { prep.phase = .ready(retry) }
-                    } else {
-                        Button("다시 검사") { prep.scan() }
-                    }
-                }
-                .controlSize(.large)
             }
-            .padding(16)
-            .card()
         }
     }
 }
@@ -251,18 +244,7 @@ struct PrepHeader: View {
     var closable = true
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: prep.urls.count == 1 && !isFolder ? "doc" : "folder")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Theme.primary)
-                .frame(width: 36, height: 36)
-                .background(Theme.sky.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(prep.title).font(.system(size: 14, weight: .semibold)).lineLimit(1).truncationMode(.middle)
-                Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 4)
+        ToolHeader(title: prep.title, subtitle: subtitle, isFolder: prep.urls.count > 1 || isFolder) {
             if closable {
                 IconButton(systemName: "xmark", label: "처음으로", filled: true) { model.prep = nil }
             }
@@ -568,86 +550,6 @@ struct PrepDoneCard: View {
         }
         .padding(16)
         .card()
-    }
-}
-
-// MARK: 기다림
-
-struct PrepDropWell: View {
-    @ObservedObject var model: AppModel
-
-    private var targeted: Bool { model.isDropTargeted }
-
-    var body: some View {
-        VStack(spacing: 10) {
-            if targeted {
-                Image(systemName: "wand.and.stars")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 72, height: 72)
-                    .background(Theme.sky, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .shadow(color: Theme.sky.opacity(0.35), radius: 10, y: 6)
-                    .accessibilityHidden(true)
-                Text("놓으면 검사해요").font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.primary)
-                Text(model.dragInfo?.summary ?? " ").font(.system(size: 13)).foregroundStyle(.secondary)
-            } else {
-                WandGlyph(size: 64)
-                Text("Windows로 보낼 파일을 놓으세요").font(.system(size: 15, weight: .semibold))
-                Text("받는 사람 컴퓨터에서 깨지지 않게 미리 고쳐요").font(.system(size: 13)).foregroundStyle(.secondary)
-                Button("파일 선택…") { model.chooseFiles() }
-                    .controlSize(.regular)
-                    .padding(.top, 4)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 232)
-        .background(targeted ? Theme.sky.opacity(0.13) : Theme.sky.opacity(0.05),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(targeted ? Theme.sky : Color.secondary.opacity(0.35),
-                              style: StrokeStyle(lineWidth: targeted ? 2 : 1.5, dash: targeted ? [] : [6, 4]))
-        )
-        .shadow(color: targeted ? Theme.sky.opacity(0.25) : .clear, radius: 10)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("파일을 놓는 곳")
-    }
-}
-
-/// 무엇을 검사하는지 미리 알려 주는 카드
-struct PrepChecksCard: View {
-    private let rows: [(String, String, String)] = [
-        ("character.textbox", "한글 이름", "자모가 풀린 이름, 못 쓰는 글자, 겹치는 이름"),
-        ("tablecells", "CSV 파일", "엑셀에서 한글이 깨지지 않게"),
-        ("photo", "HEIC 사진", "어디서나 열리는 JPG로"),
-        ("exclamationmark.triangle", "열 수 없는 파일", "Mac 전용 문서, 바로가기, 너무 긴 경로"),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("이런 걸 검사해요").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary).padding(.horizontal, 2)
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
-                    HStack(spacing: 12) {
-                        Image(systemName: row.0)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Theme.primary)
-                            .frame(width: 28, height: 28)
-                            .background(Theme.sky.opacity(0.12), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(row.1).font(.system(size: 13, weight: .medium))
-                            Text(row.2).font(.system(size: 11.5)).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .frame(height: 48)
-                    if i < rows.count - 1 { Divider().padding(.leading, 52) }
-                }
-            }
-            .card(radius: 12)
-        }
     }
 }
 

@@ -53,6 +53,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
       <key>NSSendFileTypes</key><array><string>public.item</string><string>public.folder</string></array>
     </dict>
     <dict>
+      <key>NSMenuItem</key><dict><key>default</key><string>Finderie로 용량 줄이기</string></dict>
+      <key>NSMessage</key><string>shrinkFiles</string>
+      <key>NSPortName</key><string>Finderie</string>
+      <key>NSRequiredContext</key><dict/>
+      <key>NSSendFileTypes</key><array><string>public.item</string><string>public.folder</string></array>
+    </dict>
+    <dict>
       <key>NSMenuItem</key><dict><key>default</key><string>Finderie로 압축</string></dict>
       <key>NSMessage</key><string>compressFiles</string>
       <key>NSPortName</key><string>Finderie</string>
@@ -86,7 +93,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Finder 확장: 우클릭 메뉴 맨 위의 "Windows로 보낼 준비", "Finderie로 압축 / 풀기"
+# Finder 확장: 우클릭 메뉴 맨 위의 "Windows로 보낼 준비", "용량 줄이기", "압축 / 풀기"
 APPEX="$APP/Contents/PlugIns/FinderieExtension.appex"
 mkdir -p "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
 cp Extension/Info.plist "$APPEX/Contents/Info.plist"

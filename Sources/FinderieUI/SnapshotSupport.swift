@@ -42,11 +42,32 @@ public enum SnapshotSupport {
 
     /// 아직 진행 중인 일이 있는지 (작업, 미리보기 불러오기, 보내기 준비)
     public static func isBusy(_ model: AppModel) -> Bool {
-        model.jobs.contains(where: \.isActive) || model.preview?.loading == true || model.prep?.isBusy == true
+        model.jobs.contains(where: \.isActive) || model.preview?.loading == true || model.isToolBusy
     }
 
     public static func setTab(_ model: AppModel, prep: Bool) {
         model.settings.tab = prep ? .prep : .zip
+    }
+
+    public static func setShrinkTab(_ model: AppModel) {
+        model.settings.tab = .shrink
+    }
+
+    /// 보고서 상태에서 [복사본 만들기]
+    public static func runShrinkCopy(_ model: AppModel) {
+        guard let shrink = model.shrink, case .ready(let report) = shrink.phase else { return }
+        shrink.run(report, mode: .copy)
+    }
+
+    public static func describeShrink(_ model: AppModel) -> String {
+        guard let shrink = model.shrink else { return "shrink: none" }
+        switch shrink.phase {
+        case .scanning: return "shrink: scanning"
+        case .ready(let r): return "shrink: ready items=\(r.items.count) total=\(r.totalBytes)"
+        case .working: return "shrink: working"
+        case .done(_, let o): return "shrink: done \(o.before) → \(o.after) shrunk=\(o.shrunk) kept=\(o.kept) failed=\(o.failed)"
+        case .failed(let m, _): return "shrink: failed \(m)"
+        }
     }
 
     /// 보고서 상태에서 [복사본 만들기]

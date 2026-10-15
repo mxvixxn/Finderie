@@ -17,10 +17,12 @@ let package = Package(
             cSettings: [.unsafeFlags(["-O3", "-w"]), .define("NDEBUG")]
         ),
         .target(name: "ZipCore", dependencies: ["CLibdeflate"]),
+        // 용량 줄이기 (사진, 영상, PDF, Office 문서, 소리)
+        .target(name: "ShrinkCore", dependencies: ["ZipCore"]),
         // 앱 화면 (상태 모델 + SwiftUI 뷰). 앱과 화면 확인 도구가 함께 쓴다.
-        .target(name: "FinderieUI", dependencies: ["ZipCore"]),
+        .target(name: "FinderieUI", dependencies: ["ZipCore", "ShrinkCore"]),
         .executableTarget(name: "Finderie", dependencies: ["ZipCore", "FinderieUI"]),
-        .executableTarget(name: "FinderieCLI", dependencies: ["ZipCore"]),
+        .executableTarget(name: "FinderieCLI", dependencies: ["ZipCore", "ShrinkCore"]),
         // 화면 상태를 PNG로 그려 보는 확인 도구
         .executableTarget(name: "FinderieSnap", dependencies: ["ZipCore", "FinderieUI"]),
     ]

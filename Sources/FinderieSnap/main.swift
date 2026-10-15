@@ -8,6 +8,7 @@ import FinderieUI
 // 작업 폴더에 필요한 것: "여행 사진 2026/" 폴더, "회의 자료_최종.zip"(Windows CP949),
 //                        "계약서 스캔본.zip"(손상), "급여명세.zip"(암호)
 // 보내기 준비 화면은 "제안서 자료/"(windows-test/make_prep_fixture.py)가 있을 때 그린다.
+// 용량 줄이기 화면은 "홍보 자료/"(windows-test/make_shrink_fixture.sh)가 있을 때 그린다.
 // 압축 화면은 "여행 사진 2026/"이 있을 때만 그린다.
 
 let args = CommandLine.arguments
@@ -97,6 +98,27 @@ MainActor.assumeIsolated {
         print(SnapshotSupport.describePrep(p3))
         render("p4-prep-done") { MainView(model: p3) }
         SnapshotSupport.setTab(p3, prep: false)
+    }
+    let shrinkFolder = work.appendingPathComponent("홍보 자료")
+    if FileManager.default.fileExists(atPath: shrinkFolder.path) {
+        // S1. 용량 줄이기: 기다림
+        let s1 = AppModel(loadsHistory: false)
+        SnapshotSupport.setShrinkTab(s1)
+        render("s1-shrink-idle") { MainView(model: s1) }
+
+        // S2. 보고서 (실제로 크기를 잰다)
+        let s2 = AppModel(loadsHistory: false)
+        s2.shrinkNow([shrinkFolder])
+        waitIdle(s2)
+        print(SnapshotSupport.describeShrink(s2))
+        render("s2-shrink-report") { MainView(model: s2) }
+
+        // S3. 완료 (실제로 줄인다)
+        SnapshotSupport.runShrinkCopy(s2)
+        waitIdle(s2, timeout: 180)
+        print(SnapshotSupport.describeShrink(s2))
+        render("s3-shrink-done") { MainView(model: s2) }
+        SnapshotSupport.setTab(s2, prep: false)
     }
     guard FileManager.default.fileExists(atPath: folder.path) else { return }
 

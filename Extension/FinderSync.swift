@@ -1,7 +1,7 @@
 import Cocoa
 import FinderSync
 
-/// Finder 우클릭 메뉴 맨 위에 "Windows로 보낼 준비", "Finderie로 압축 / 풀기"를 넣는 Finder 확장.
+/// Finder 우클릭 메뉴 맨 위에 "Windows로 보낼 준비", "용량 줄이기", "압축 / 풀기"를 넣는 Finder 확장.
 ///
 /// 확장은 샌드박스 안에서 돌아서 파일을 직접 만지지 않는다. 고른 파일 경로를 finderie:// 주소로
 /// Finderie 앱에 넘기기만 한다. 다른 곳(웹사이트 등)이 이 주소를 흉내 내지 못하도록, 확장만 아는
@@ -26,6 +26,10 @@ final class FinderSync: FIFinderSync {
         prepare.image = Self.appIcon
         menu.addItem(prepare)
 
+        let shrink = NSMenuItem(title: "Finderie로 용량 줄이기", action: #selector(shrink(_:)), keyEquivalent: "")
+        shrink.image = Self.appIcon
+        menu.addItem(shrink)
+
         let compress = NSMenuItem(title: "Finderie로 압축", action: #selector(compress(_:)), keyEquivalent: "")
         compress.image = Self.appIcon
         menu.addItem(compress)
@@ -47,6 +51,7 @@ final class FinderSync: FIFinderSync {
     }()
 
     @objc private func prepare(_ sender: AnyObject?) { send("prepare") }
+    @objc private func shrink(_ sender: AnyObject?) { send("shrink") }
     @objc private func compress(_ sender: AnyObject?) { send("compress") }
     @objc private func extract(_ sender: AnyObject?) { send("extract") }
 

@@ -67,6 +67,7 @@ public enum SendPrep {
 
     public struct Failure: LocalizedError {
         public let message: String
+        public init(message: String) { self.message = message }
         public var errorDescription: String? { message }
     }
 
@@ -533,27 +534,27 @@ public enum SendPrep {
 }
 
 /// 이름을 받은 그대로(한글 NFC 그대로) 디스크에 쓰는 얇은 POSIX 포장
-enum POSIX {
+public enum POSIX {
     static func fail(_ what: String, _ path: String) -> SendPrep.Failure {
         let reason = String(cString: strerror(errno))
         return SendPrep.Failure(message: "\(what) 못했어요: \(SendPrep.display((path as NSString).lastPathComponent)) (\(reason))")
     }
 
-    static func mkdir(_ path: String) throws {
+    public static func mkdir(_ path: String) throws {
         if Darwin.mkdir(path, 0o755) != 0 { throw fail("폴더를 만들지", path) }
     }
 
-    static func rename(_ from: String, _ to: String) throws {
+    public static func rename(_ from: String, _ to: String) throws {
         if Darwin.rename(from, to) != 0 { throw fail("이름을 바꾸지", from) }
     }
 
-    static func copy(_ from: String, _ to: String, recursive: Bool) throws {
+    public static func copy(_ from: String, _ to: String, recursive: Bool) throws {
         var flags = copyfile_flags_t(COPYFILE_ALL | COPYFILE_CLONE | COPYFILE_NOFOLLOW_SRC | COPYFILE_EXCL)
         if recursive { flags |= copyfile_flags_t(COPYFILE_RECURSIVE) }
         if copyfile(from, to, nil, flags) != 0 { throw fail("복사하지", from) }
     }
 
-    static func write(_ data: Data, to path: String) throws {
+    public static func write(_ data: Data, to path: String) throws {
         let fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0o644)
         guard fd >= 0 else { throw fail("파일을 쓰지", path) }
         defer { close(fd) }
@@ -568,7 +569,7 @@ enum POSIX {
     }
 
     /// 폴더 안 이름들을 디스크에 저장된 그대로. (FileManager는 "._"로 시작하는 파일을 숨겨서 직접 읽는다)
-    static func list(_ path: String) -> [String] {
+    public static func list(_ path: String) -> [String] {
         guard let dir = opendir(path) else { return [] }
         defer { closedir(dir) }
         var names: [String] = []
@@ -581,7 +582,7 @@ enum POSIX {
         return names
     }
 
-    static func inode(_ path: String) -> ino_t? {
+    public static func inode(_ path: String) -> ino_t? {
         var st = stat()
         return lstat(path, &st) == 0 ? st.st_ino : nil
     }
