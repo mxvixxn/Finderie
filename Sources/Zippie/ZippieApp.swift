@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ZippieUI
 
 @main
 struct ZippieApp: App {
@@ -7,16 +8,20 @@ struct ZippieApp: App {
 
     var body: some Scene {
         Window("Zippie", id: "main") {
-            ContentView()
-                .environmentObject(appDelegate.worker)
+            MainView(model: appDelegate.model)
         }
         .windowResizability(.contentSize)
+        .windowToolbarStyle(.unified(showsTitle: true))
+
+        Settings {
+            SettingsView(settings: appDelegate.model.settings)
+        }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let worker = Worker()
+    let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
@@ -25,8 +30,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
-    /// Dock 아이콘이나 Finder의 '다음으로 열기'로 들어온 파일: .zip은 풀고, 나머지는 압축.
+    /// Dock 아이콘이나 Finder의 '다음으로 열기'로 들어온 파일: 창에 놓은 것과 똑같이 처리한다.
     func application(_ application: NSApplication, open urls: [URL]) {
-        worker.handleOpened(urls)
+        model.accept(urls)
     }
 }

@@ -27,7 +27,9 @@ swift build -c release --product zippie-cli   # 시험용 명령줄 도구
 | 경로 | 내용 |
 |---|---|
 | `Sources/ZipCore` | ZIP 읽기/쓰기, 병렬 압축, 인코딩 처리 |
-| `Sources/Zippie` | SwiftUI 앱 |
+| `Sources/Zippie` | 앱 진입점 (창, 설정 창, Dock으로 연 파일) |
+| `Sources/ZippieUI` | 화면과 상태 모델: 놓는 칸, ZIP 미리보기, 작업 대기열·카드, 최근 기록, 설정 |
+| `Sources/ZippieSnap` | 화면 확인 도구: 실제 작업을 돌려 각 상태를 PNG로 그린다 (`zippie-snap <출력> <작업 폴더>`) |
 | `Sources/ZippieCLI` | 시험용 명령줄 도구 (`zippie-cli zip/unzip/list`) |
 | `Sources/CLibdeflate` | libdeflate v1.24 (MIT). Zippie용 수정 사항은 `VERSION.txt` 참고 |
 | `windows-test` | Windows 호환성 시험 묶음 (`make_pack.sh` → `serve.py` → VM에서 `run.ps1`) |

@@ -54,6 +54,47 @@ public enum CompressionLevel: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// 압축을 풀 때 파일 이름을 어떤 인코딩으로 읽을지.
+public enum NameDecoding: String, CaseIterable, Identifiable, Sendable {
+    /// UTF-8 표시, 유니코드 보조 필드, 바이트 모양을 보고 알아서 판단
+    case auto
+    /// 무조건 UTF-8로
+    case utf8
+    /// 무조건 CP949(Windows 한국어)로
+    case cp949
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .auto: return "자동"
+        case .utf8: return "UTF-8"
+        case .cp949: return "CP949 (Windows)"
+        }
+    }
+}
+
+/// 진행 중인 작업을 멈추게 하는 신호. 다른 스레드에서 cancel()을 불러도 된다.
+public final class CancelToken: @unchecked Sendable {
+    private let lock = NSLock()
+    private var flag = false
+
+    public init() {}
+
+    public var isCancelled: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return flag
+    }
+
+    public func cancel() {
+        lock.lock(); flag = true; lock.unlock()
+    }
+
+    func check() throws {
+        if isCancelled { throw ZipError.cancelled }
+    }
+}
+
 public struct ZipOptions: Sendable {
     public var nameEncoding: NameEncoding
     /// .DS_Store, ._*, __MACOSX 같은 Mac 전용 파일을 빼기.
@@ -69,6 +110,8 @@ public struct ZipOptions: Sendable {
     public var background: Bool
     /// 파일 읽기 방식. auto면 외장·네트워크 드라이브일 때 순서대로 읽는다.
     public var ioMode: IOMode
+    /// 압축을 풀 때 파일 이름 인코딩
+    public var nameDecoding: NameDecoding
 
     public init(
         nameEncoding: NameEncoding = .windowsUTF8,
@@ -78,7 +121,8 @@ public struct ZipOptions: Sendable {
         threads: Int = ProcessInfo.processInfo.activeProcessorCount,
         chunkSize: Int = 1 << 20,
         background: Bool = false,
-        ioMode: IOMode = .auto
+        ioMode: IOMode = .auto,
+        nameDecoding: NameDecoding = .auto
     ) {
         self.nameEncoding = nameEncoding
         self.excludeMacFiles = excludeMacFiles
@@ -88,6 +132,7 @@ public struct ZipOptions: Sendable {
         self.chunkSize = max(64 * 1024, chunkSize)
         self.background = background
         self.ioMode = ioMode
+        self.nameDecoding = nameDecoding
     }
 }
 
@@ -100,6 +145,7 @@ public enum ZipError: LocalizedError {
     case unsafePath(String)
     case checksumMismatch(String)
     case nothingToCompress
+    case cancelled
 
     public var errorDescription: String? {
         switch self {
@@ -111,6 +157,7 @@ public enum ZipError: LocalizedError {
         case .unsafePath(let name): return "위험한 경로가 들어 있어서 건너뛸 수 없어요: \(name)"
         case .checksumMismatch(let name): return "데이터가 손상됐어요 (CRC 불일치): \(name)"
         case .nothingToCompress: return "압축할 파일이 없어요."
+        case .cancelled: return "작업을 취소했어요."
         }
     }
 }

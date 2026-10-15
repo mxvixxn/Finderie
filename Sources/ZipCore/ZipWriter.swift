@@ -75,13 +75,14 @@ public enum ZipWriter {
         _ items: [URL],
         to output: URL,
         options: ZipOptions,
-        progress: ProgressHandler? = nil
+        progress: ProgressHandler? = nil,
+        cancel: CancelToken? = nil
     ) throws -> ZipStats {
         let report = ProgressThrottle(progress)
         report.report(0, "준비 중", force: true)
         let plan = ExecutionPlan.make(options, involving: items + [output])
         return try plan.withIOPolicy {
-            try compress(items, to: output, options: options, plan: plan, report: report)
+            try compress(items, to: output, options: options, plan: plan, report: report, cancel: cancel)
         }
     }
 
@@ -90,7 +91,8 @@ public enum ZipWriter {
         to output: URL,
         options: ZipOptions,
         plan: ExecutionPlan,
-        report: ProgressThrottle
+        report: ProgressThrottle,
+        cancel: CancelToken?
     ) throws -> ZipStats {
         let sources = try collect(items, options: options)
         guard !sources.isEmpty else { throw ZipError.nothingToCompress }
@@ -149,6 +151,7 @@ public enum ZipWriter {
         var records: [CentralRecord] = []
 
         for (i, src) in sources.enumerated() {
+            try cancel?.check()
             let offset = out.position
             let encoded = encodeName(src.name, as: options.nameEncoding)
             let (dosTime, dosDate) = DOSDate.encode(src.modified)
@@ -205,6 +208,7 @@ public enum ZipWriter {
                 try out.write(localHeader(crc: 0, compressed: 0, size: 0))
                 var pieceSizes: [UInt32] = []
                 while written < src.size {
+                    try cancel?.check()
                     let piece = try pipeline.nextOutput()
                     try out.write(piece.data)
                     crc = written == 0 ? piece.crc : CRC32.combine(crc, piece.crc, length: piece.length)

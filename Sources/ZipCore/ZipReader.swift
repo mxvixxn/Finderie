@@ -11,6 +11,8 @@ public enum ZipReader {
         case cp949 = "CP949 (Windows)"
         case ascii = "ASCII"
         case unknown = "알 수 없음"
+        case forcedUTF8 = "UTF-8 (직접 지정)"
+        case forcedCP949 = "CP949 (직접 지정)"
     }
 
     public struct Entry {
@@ -21,8 +23,8 @@ public enum ZipReader {
         let dosTime: UInt16
         let dosDate: UInt16
         let crc: UInt32
-        let compressedSize: UInt64
-        let size: UInt64
+        public let compressedSize: UInt64
+        public let size: UInt64
         let madeByHost: UInt8
         let externalAttributes: UInt32
         let localOffset: UInt64
@@ -44,7 +46,7 @@ public enum ZipReader {
 
     // MARK: - 목록 읽기
 
-    public static func entries(of url: URL) throws -> [Entry] {
+    public static func entries(of url: URL, decoding: NameDecoding = .auto) throws -> [Entry] {
         let fh = try FileHandle(forReadingFrom: url)
         defer { try? fh.close() }
         let fileSize = try fh.seekToEnd()
@@ -97,7 +99,7 @@ public enum ZipReader {
             let flags = cd.u16(p + 8)
             let nameBytes = Array(cd[(p + 46)..<(p + 46 + nameLen)])
             let extra = Array(cd[(p + 46 + nameLen)..<(p + 46 + nameLen + extraLen)])
-            let (name, enc) = decodeName(nameBytes, flags: flags, extra: extra)
+            let (name, enc) = decodeName(nameBytes, flags: flags, extra: extra, decoding: decoding)
 
             var csize = UInt64(cd.u32(p + 20))
             var usize = UInt64(cd.u32(p + 24))
@@ -150,7 +152,17 @@ public enum ZipReader {
     }
 
     /// 파일 이름 바이트를 사람이 읽을 수 있는 문자열로. 한글 깨짐 방지의 핵심.
-    static func decodeName(_ bytes: [UInt8], flags: UInt16, extra: [UInt8]) -> (String, DetectedEncoding) {
+    static func decodeName(_ bytes: [UInt8], flags: UInt16, extra: [UInt8],
+                           decoding: NameDecoding = .auto) -> (String, DetectedEncoding) {
+        // 0) 사용자가 인코딩을 직접 고른 경우 (그 인코딩으로 읽을 수 없으면 자동으로 넘어간다)
+        switch decoding {
+        case .utf8:
+            if let s = String(bytes: bytes, encoding: .utf8) { return (s.precomposedStringWithCanonicalMapping, .forcedUTF8) }
+        case .cp949:
+            if let s = String(bytes: bytes, encoding: Encodings.cp949) { return (s, .forcedCP949) }
+        case .auto:
+            break
+        }
         // 1) UTF-8 표시가 있으면 그대로 UTF-8
         if flags & (1 << 11) != 0, let s = String(bytes: bytes, encoding: .utf8) {
             return (s.precomposedStringWithCanonicalMapping, .utf8Flag)
@@ -199,11 +211,13 @@ public enum ZipReader {
     /// zip 옆에 풀어 놓는다. 최상위 항목이 하나면 그대로, 여러 개면 zip 이름의 폴더를 만든다.
     public static func extract(
         _ zip: URL,
+        to directory: URL? = nil,
         options: ZipOptions,
-        progress: ProgressHandler? = nil
+        progress: ProgressHandler? = nil,
+        cancel: CancelToken? = nil
     ) throws -> Result {
         let fm = FileManager.default
-        var list = try entries(of: zip)
+        var list = try entries(of: zip, decoding: options.nameDecoding)
         if options.excludeMacFiles {
             list.removeAll { e in e.name.split(whereSeparator: { $0 == "/" || $0 == "\\" }).contains { MacJunk.isJunk(component: String($0)) } }
         }
@@ -219,7 +233,7 @@ public enum ZipReader {
             planned.append((e, parts))
         }
 
-        let parent = zip.deletingLastPathComponent()
+        let parent = directory ?? zip.deletingLastPathComponent()
         let tops = Set(planned.map { $0.1[0] })
         let root: URL
         var renameTop: (from: String, to: String)?
@@ -321,6 +335,7 @@ public enum ZipReader {
             archive.withUnsafeBytes { (zipBytes: UnsafeRawBufferPointer) in
                 while true {
                     let k = counter.increment()
+                    if cancel?.isCancelled == true { fail(ZipError.cancelled); break }
                     lock.lock(); let stop = firstError != nil; lock.unlock()
                     if k >= jobs.count || stop { break }
                     let job = jobs[k]
