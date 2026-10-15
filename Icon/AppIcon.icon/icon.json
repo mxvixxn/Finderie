@@ -1,0 +1,143 @@
+{
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "slider.svg",
+          "name": "slider"
+        },
+        {
+          "glass": true,
+          "image-name": "tab.svg",
+          "name": "tab"
+        }
+      ],
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.25
+      }
+    },
+    {
+      "layers": [
+        {
+          "image-name": "teeth.svg",
+          "name": "teeth",
+          "fill-specializations": [
+            {
+              "value": {
+                "linear-gradient": [
+                  "srgb:0.05882,0.06667,0.07843,1.00000",
+                  "srgb:0.70588,0.72549,0.76078,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 1
+                  }
+                }
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "linear-gradient": [
+                  "srgb:0.96078,0.96863,0.98039,1.00000",
+                  "srgb:0.32157,0.34118,0.37255,1.00000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 1
+                  }
+                }
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "linear-gradient": [
+                  "srgb:1.00000,1.00000,1.00000,1.00000",
+                  "srgb:1.00000,1.00000,1.00000,0.20000"
+                ],
+                "orientation": {
+                  "start": {
+                    "x": 0.5,
+                    "y": 0
+                  },
+                  "stop": {
+                    "x": 0.5,
+                    "y": 1
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.25
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.4
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  },
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:1.00000,1.00000,1.00000,1.00000",
+          "srgb:0.90196,0.92157,0.94510,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1
+          }
+        }
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.16863,0.18039,0.20392,1.00000",
+          "srgb:0.07059,0.07843,0.09412,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1
+          }
+        }
+      }
+    }
+  ]
+}

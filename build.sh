@@ -10,16 +10,11 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Zippie "$APP/Contents/MacOS/Zippie"
 
-# 아이콘
-ICONSET=$(mktemp -d)/AppIcon.iconset
-mkdir -p "$ICONSET"
-swift scripts/make-icon.swift "$ICONSET/base.png"
-for s in 16 32 128 256 512; do
-  sips -z $s $s "$ICONSET/base.png" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
-  sips -z $((s*2)) $((s*2)) "$ICONSET/base.png" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
-done
-rm "$ICONSET/base.png"
-iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+# 아이콘: Icon Composer로 만든 Icon/AppIcon.icon을 컴파일한다.
+# macOS 26은 Assets.car의 Liquid Glass 아이콘을, 그 이전 macOS는 AppIcon.icns를 쓴다.
+xcrun actool Icon/AppIcon.icon --compile "$APP/Contents/Resources" \
+  --platform macosx --minimum-deployment-target 14.0 --app-icon AppIcon \
+  --output-partial-info-plist "$(mktemp -d)/partial.plist" >/dev/null
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -31,6 +26,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>com.mxvixxn.zippie</string>
   <key>CFBundleExecutable</key><string>Zippie</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleIconName</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundleVersion</key><string>1</string>

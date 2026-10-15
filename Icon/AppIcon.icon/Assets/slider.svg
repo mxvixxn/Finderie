@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <mask id="slot">
+      <rect width="1024" height="1024" fill="#FFFFFF"/>
+      <rect x="451" y="317" width="122" height="41" rx="20.5" fill="#000000"/>
+    </mask>
+  </defs>
+  <rect x="297" y="246" width="430" height="246" rx="123" fill="#2FA6F2" mask="url(#slot)"/>
+</svg>
