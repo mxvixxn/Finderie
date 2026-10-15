@@ -22,8 +22,15 @@ struct ZippieApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    private lazy var services = ServiceProvider(model: model)
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // 서비스는 앱이 막 켜질 때 바로 불릴 수 있어서, 창보다 먼저 연결해 둔다
+        NSApp.servicesProvider = services
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSUpdateDynamicServices()
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }

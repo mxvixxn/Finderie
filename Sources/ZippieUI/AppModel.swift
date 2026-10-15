@@ -192,6 +192,19 @@ public final class AppModel: ObservableObject {
         accept(urls)
     }
 
+    /// Finder 우클릭 → "Zippie로 압축": ZIP이 섞여 있어도 고른 것을 그대로 압축한다.
+    public func compressNow(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        enqueue(Job(kind: .compress, inputs: urls, target: ZipWriter.suggestedOutputURL(for: urls)))
+    }
+
+    /// Finder 우클릭 → "Zippie로 풀기": 미리보기 없이 바로 푼다 (기본 풀 위치 설정을 따른다).
+    public func extractNow(_ urls: [URL]) {
+        for zip in urls where zip.pathExtension.lowercased() == "zip" {
+            enqueue(Job(kind: .extract, inputs: [zip], target: settings.extractDestination.directory(for: zip)))
+        }
+    }
+
     func showPreview(_ zip: URL) {
         let model = PreviewModel(zip: zip, destination: settings.extractDestination)
         preview = model

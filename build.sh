@@ -34,6 +34,24 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSHighResolutionCapable</key><true/>
+  <!-- Finder 우클릭 → 빠른 동작/서비스 메뉴. NSRequiredContext가 있어야 처음부터 켜진 상태로 나온다 -->
+  <key>NSServices</key>
+  <array>
+    <dict>
+      <key>NSMenuItem</key><dict><key>default</key><string>Zippie로 압축</string></dict>
+      <key>NSMessage</key><string>compressFiles</string>
+      <key>NSPortName</key><string>Zippie</string>
+      <key>NSRequiredContext</key><dict/>
+      <key>NSSendFileTypes</key><array><string>public.item</string><string>public.folder</string></array>
+    </dict>
+    <dict>
+      <key>NSMenuItem</key><dict><key>default</key><string>Zippie로 풀기</string></dict>
+      <key>NSMessage</key><string>extractFiles</string>
+      <key>NSPortName</key><string>Zippie</string>
+      <key>NSRequiredContext</key><dict/>
+      <key>NSSendFileTypes</key><array><string>public.zip-archive</string></array>
+    </dict>
+  </array>
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
