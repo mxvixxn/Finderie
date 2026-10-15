@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+Zippie.app/
+.DS_Store
+# Windows 시험 묶음은 make_pack.sh로 다시 만든다
+windows-test/zips/
+windows-test/expected/
+windows-test/results/unzipped_*/
