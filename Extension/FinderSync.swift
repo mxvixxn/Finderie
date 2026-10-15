@@ -23,20 +23,28 @@ final class FinderSync: FIFinderSync {
 
         let menu = NSMenu(title: "Finderie")
         let prepare = NSMenuItem(title: "Windows로 보낼 준비", action: #selector(prepare(_:)), keyEquivalent: "")
-        prepare.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
+        prepare.image = Self.appIcon
         menu.addItem(prepare)
 
         let compress = NSMenuItem(title: "Finderie로 압축", action: #selector(compress(_:)), keyEquivalent: "")
-        compress.image = NSImage(systemSymbolName: "doc.zipper", accessibilityDescription: nil)
+        compress.image = Self.appIcon
         menu.addItem(compress)
 
         if selected.allSatisfy({ $0.pathExtension.lowercased() == "zip" }) {
             let extract = NSMenuItem(title: "Finderie로 풀기", action: #selector(extract(_:)), keyEquivalent: "")
-            extract.image = NSImage(systemSymbolName: "arrow.up.bin", accessibilityDescription: nil)
+            extract.image = Self.appIcon
             menu.addItem(extract)
         }
         return menu
     }
+
+    /// 메뉴 항목 옆의 Finderie 아이콘 (다른 앱 메뉴처럼 앱 로고를 보여 준다)
+    private static let appIcon: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        image.size = NSSize(width: 16, height: 16)
+        return image
+    }()
 
     @objc private func prepare(_ sender: AnyObject?) { send("prepare") }
     @objc private func compress(_ sender: AnyObject?) { send("compress") }

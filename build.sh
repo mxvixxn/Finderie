@@ -88,8 +88,10 @@ PLIST
 
 # Finder 확장: 우클릭 메뉴 맨 위의 "Windows로 보낼 준비", "Finderie로 압축 / 풀기"
 APPEX="$APP/Contents/PlugIns/FinderieExtension.appex"
-mkdir -p "$APPEX/Contents/MacOS"
+mkdir -p "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
 cp Extension/Info.plist "$APPEX/Contents/Info.plist"
+# 메뉴 항목 옆에 보일 앱 아이콘 (확장은 샌드박스라 자기 번들 안에 둔다)
+cp "$APP/Contents/Resources/AppIcon.icns" "$APPEX/Contents/Resources/AppIcon.icns"
 xcrun swiftc -O -module-name FinderieExtension -parse-as-library -application-extension \
   -target "$(uname -m)-apple-macos14.0" -sdk "$(xcrun --show-sdk-path)" \
   Extension/FinderSync.swift -framework FinderSync -framework Cocoa \
