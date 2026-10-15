@@ -1,4 +1,4 @@
-﻿=== Zippie Windows 시험 2026-10-15 17:40:08 ===
+﻿=== Finderie Windows 시험 2026-10-15 17:40:08 ===
 OS: Microsoft Windows 11 Pro 10.0.26200 / ARM64
 시스템 로캘: ko-KR / ANSI 코드페이지: 949 / OEM: 65001
 레지스트리 ACP: 949 (65001이면 'UTF-8 베타' 켜짐)
@@ -96,7 +96,7 @@ PowerShell: 5.1.26100.8655
   [.NET] 풀기 303.9 초
   [.NET] 통과: 이름 70000/70000, 내용(MD5) 70000/70000, 폴더 71/71, 예상 밖 파일 0개
 
-■ Windows에서 만든 ZIP (Mac에서 Zippie로 풀어 볼 것)
+■ Windows에서 만든 ZIP (Mac에서 Finderie로 풀어 볼 것)
   탐색기로 압축: 0 KB
   Compress-Archive로 압축: 2932 KB
 

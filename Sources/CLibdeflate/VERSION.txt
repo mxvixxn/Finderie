@@ -1,4 +1,4 @@
 libdeflate v1.24 (commit 96836d7d) — https://github.com/ebiggers/libdeflate, MIT license
 
-수정 사항: lib/deflate_compress.c, libdeflate.h 에 "[Zippie patch]" 표시된 libdeflate_zippie_set_sync_flush() 추가
+수정 사항: lib/deflate_compress.c, libdeflate.h 에 "[Finderie patch]" 표시된 libdeflate_finderie_set_sync_flush() 추가
 (끝 블록 없이 Z_SYNC_FLUSH처럼 끝나는 조각 출력 — 병렬 압축용)

@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import ZipCore
 
-/// Zippie 메인 창의 내용. 상태(기다림 · 미리보기 · 작업 중 · 완료 · 오류)에 따라 구성이 바뀐다.
+/// Finderie 메인 창의 내용. 상태(기다림 · 미리보기 · 작업 중 · 완료 · 오류)에 따라 구성이 바뀐다.
 public struct MainView: View {
     @ObservedObject var model: AppModel
 

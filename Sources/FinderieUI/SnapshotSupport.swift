@@ -1,7 +1,7 @@
 import Foundation
 import ZipCore
 
-/// 화면 확인 도구(zippie-snap)가 상태를 만들 때 쓰는 통로. 앱 자체는 쓰지 않는다.
+/// 화면 확인 도구(finderie-snap)가 상태를 만들 때 쓰는 통로. 앱 자체는 쓰지 않는다.
 @MainActor
 public enum SnapshotSupport {
     public static func addHistory(_ model: AppModel, name: String, isCompress: Bool, detail: String, path: String, minutesAgo: Double) {

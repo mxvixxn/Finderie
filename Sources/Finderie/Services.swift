@@ -1,7 +1,7 @@
 import AppKit
-import ZippieUI
+import FinderieUI
 
-/// Finder 우클릭 → 빠른 동작(서비스)의 "Zippie로 압축 / 풀기"를 받는다.
+/// Finder 우클릭 → 빠른 동작(서비스)의 "Finderie로 압축 / 풀기"를 받는다.
 /// 메뉴 이름과 메시지 이름은 Info.plist의 NSServices(build.sh)와 짝이다.
 @MainActor
 final class ServiceProvider: NSObject {
@@ -29,7 +29,7 @@ final class ServiceProvider: NSObject {
         (pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
     }
 
-    /// 진행 카드와 완료 카드가 보이도록 Zippie 창을 앞으로 가져온다.
+    /// 진행 카드와 완료 카드가 보이도록 Finderie 창을 앞으로 가져온다.
     private func bringToFront() {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.windows.first { $0.isVisible && $0.canBecomeMain }?.makeKeyAndOrderFront(nil)

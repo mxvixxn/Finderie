@@ -1,15 +1,15 @@
 import AppKit
 import SwiftUI
-import ZippieUI
+import FinderieUI
 
 @main
-struct ZippieApp: App {
+struct FinderieApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        Window("Zippie", id: "main") {
+        Window("Finderie", id: "main") {
             MainView(model: appDelegate.model)
-                // SwiftUI는 zippie:// 주소를 대리자가 아니라 여기로만 보낸다
+                // SwiftUI는 finderie:// 주소를 대리자가 아니라 여기로만 보낸다
                 .onOpenURL { appDelegate.handleLink($0) }
         }
         .windowResizability(.contentSize)
@@ -46,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// 창이 받은 주소. SwiftUI는 창이 있으면 파일 열기도 여기로 보낸다.
-    /// Finder 확장에서 온 zippie:// 주소는 FinderLink로 비밀 값을 확인한 뒤 처리한다.
+    /// Finder 확장에서 온 finderie:// 주소는 FinderLink로 비밀 값을 확인한 뒤 처리한다.
     func handleLink(_ url: URL) {
         if url.isFileURL {
             model.accept([url])

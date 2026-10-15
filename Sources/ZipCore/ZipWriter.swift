@@ -137,7 +137,7 @@ public enum ZipWriter {
         // 같은 폴더에 임시 파일로 쓰고, 끝나면 제자리로 옮긴다.
         let fm = FileManager.default
         let temp = output.deletingLastPathComponent()
-            .appendingPathComponent(".zippie-\(UUID().uuidString).tmp")
+            .appendingPathComponent(".finderie-\(UUID().uuidString).tmp")
         guard fm.createFile(atPath: temp.path, contents: nil) else {
             throw ZipError.cannotRead(output.path)
         }

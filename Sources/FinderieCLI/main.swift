@@ -2,9 +2,9 @@ import Foundation
 import ZipCore
 
 // 테스트용 명령줄 도구
-//   zippie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> <out.zip> <파일...>
-//   zippie-cli unzip [--threads N] <in.zip>
-//   zippie-cli list <in.zip>
+//   finderie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> <out.zip> <파일...>
+//   finderie-cli unzip [--threads N] <in.zip>
+//   finderie-cli list <in.zip>
 var args = Array(CommandLine.arguments.dropFirst())
 func fail(_ msg: String) -> Never { FileHandle.standardError.write((msg + "\n").data(using: .utf8)!); exit(1) }
 
@@ -38,7 +38,7 @@ do {
     case "list" where args.count == 1:
         for e in try ZipReader.entries(of: URL(fileURLWithPath: args[0])) { print("\(e.encoding.rawValue)\t\(e.name)") }
     default:
-        fail("usage: zippie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> out.zip files... | unzip in.zip | list in.zip")
+        fail("usage: finderie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> out.zip files... | unzip in.zip | list in.zip")
     }
 } catch {
     fail("error: \(error.localizedDescription)")

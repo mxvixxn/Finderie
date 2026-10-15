@@ -1,7 +1,7 @@
-# Windows에서 만든 ZIP을 Zippie로 풀고, Windows 쪽 원본 목록(win_expected.tsv)과 비교한다.
+# Windows에서 만든 ZIP을 Finderie로 풀고, Windows 쪽 원본 목록(win_expected.tsv)과 비교한다.
 import hashlib, os, subprocess, sys, shutil, unicodedata as u, zipfile
 W = os.path.dirname(os.path.abspath(__file__)); R = f'{W}/results'
-CLI = os.path.join(W, '..', '.build', 'release', 'zippie-cli')
+CLI = os.path.join(W, '..', '.build', 'release', 'finderie-cli')
 exp = {}
 for line in open(f'{R}/win_expected.tsv', encoding='utf-8-sig'):
     k, name, md5, _ = line.rstrip('\n').split('\t'); exp[u.normalize('NFC', name)] = (k, md5)
@@ -24,7 +24,7 @@ for zn in [n for n in ['win_explorer.zip', 'win_dotnet.zip'] if os.path.exists(f
     out = f'{R}/unzipped_{zn[:-4]}'; shutil.rmtree(out, ignore_errors=True); os.makedirs(out)
     shutil.copy(f'{R}/{zn}', out)
     r = subprocess.run([CLI, 'unzip', zn], cwd=out, capture_output=True, text=True)
-    print('  Zippie:', (r.stdout or r.stderr).strip().replace(out + '/', ''))
+    print('  Finderie:', (r.stdout or r.stderr).strip().replace(out + '/', ''))
     got = {}
     for d, dirs, fs in os.walk(out):
         for n in dirs: got[u.normalize('NFC', os.path.relpath(os.path.join(d, n), out))] = ('D', '-')

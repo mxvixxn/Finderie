@@ -28,7 +28,7 @@ public enum ZipReader {
         let madeByHost: UInt8
         let externalAttributes: UInt32
         let localOffset: UInt64
-        /// Zippie가 만든 큰 파일의 조각 색인 (있으면 병렬로 풀 수 있다)
+        /// Finderie가 만든 큰 파일의 조각 색인 (있으면 병렬로 풀 수 있다)
         let chunkIndex: ChunkIndex?
 
         /// Windows PowerShell 5.1의 Compress-Archive처럼 표준과 달리 '\'를 구분자로 쓰는 프로그램도 있다.
@@ -407,7 +407,7 @@ private final class OutputFile: @unchecked Sendable {
 
     /// 여러 조각으로 나눠 동시에 풀 수 있는지.
     /// - 그대로 담긴 큰 파일: 언제나 가능
-    /// - 압축된 큰 파일: Zippie 색인이 있을 때만
+    /// - 압축된 큰 파일: Finderie 색인이 있을 때만
     var canSplit: Bool {
         isStoredSplit || (entry.method == 8 && (entry.chunkIndex?.compressedSizes.count ?? 0) > 1)
     }

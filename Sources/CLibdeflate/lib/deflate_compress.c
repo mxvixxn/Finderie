@@ -464,11 +464,11 @@ struct libdeflate_compressor {
 	unsigned compression_level;
 
 	/*
-	 * [Zippie patch] If true, never mark a block as final and end the output
+	 * [Finderie patch] If true, never mark a block as final and end the output
 	 * with an empty stored block (like zlib's Z_SYNC_FLUSH), so that outputs
 	 * of consecutive chunks can be concatenated into one valid DEFLATE stream.
 	 */
-	bool zippie_sync_flush;
+	bool finderie_sync_flush;
 
 	/* Anything of this size or less we won't bother trying to compress. */
 	size_t max_passthrough_size;
@@ -1717,8 +1717,8 @@ deflate_flush_block(struct libdeflate_compressor *c,
 		    const struct deflate_sequence *sequences,
 		    bool is_final_block)
 {
-	/* [Zippie patch] see zippie_sync_flush */
-	if (c->zippie_sync_flush)
+	/* [Finderie patch] see finderie_sync_flush */
+	if (c->finderie_sync_flush)
 		is_final_block = false;
 	/*
 	 * It is hard to get compilers to understand that writes to 'os->next'
@@ -3920,7 +3920,7 @@ libdeflate_alloc_compressor_ex(int compression_level,
 		       options->free_func : libdeflate_default_free_func;
 
 	c->compression_level = compression_level;
-	c->zippie_sync_flush = false;
+	c->finderie_sync_flush = false;
 
 	/*
 	 * The higher the compression level, the more we should bother trying to
@@ -4061,12 +4061,12 @@ libdeflate_deflate_compress(struct libdeflate_compressor *c,
 		return 0;
 
 	/*
-	 * [Zippie patch] Append an empty, non-final stored block: 3 header bits
+	 * [Finderie patch] Append an empty, non-final stored block: 3 header bits
 	 * (BFINAL=0, BTYPE=00), padding to a byte boundary, then LEN=0x0000 and
 	 * NLEN=0xFFFF.  The stream then ends on a byte boundary without a final
 	 * block, exactly like zlib's Z_SYNC_FLUSH.
 	 */
-	if (c->zippie_sync_flush) {
+	if (c->finderie_sync_flush) {
 		unsigned nbits = os.bitcount + 3;
 		size_t nbytes = (nbits + 7) / 8;
 		if ((size_t)(os.end - os.next) < nbytes + 4)
@@ -4097,11 +4097,11 @@ libdeflate_deflate_compress(struct libdeflate_compressor *c,
 	return os.next - (u8 *)out;
 }
 
-/* [Zippie patch] */
+/* [Finderie patch] */
 LIBDEFLATEAPI void
-libdeflate_zippie_set_sync_flush(struct libdeflate_compressor *c, int enabled)
+libdeflate_finderie_set_sync_flush(struct libdeflate_compressor *c, int enabled)
 {
-	c->zippie_sync_flush = enabled != 0;
+	c->finderie_sync_flush = enabled != 0;
 }
 
 LIBDEFLATEAPI void

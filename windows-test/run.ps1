@@ -1,4 +1,4 @@
-﻿# Zippie Windows 호환성 시험
+﻿# Finderie Windows 호환성 시험
 # 사용: powershell -ExecutionPolicy Bypass -File run.ps1 -Server http://<mac>:8765
 param([Parameter(Mandatory = $true)][string]$Server, [switch]$SkipExplorerMany)
 
@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
-$base = Join-Path $env:USERPROFILE 'Desktop\ZippieTest'
+$base = Join-Path $env:USERPROFILE 'Desktop\FinderieTest'
 if (Test-Path $base) { Remove-Item $base -Recurse -Force }
 New-Item -ItemType Directory -Path $base, "$base\zips", "$base\expected", "$base\out", "$base\upload" | Out-Null
 $report = "$base\upload\report.txt"
@@ -23,7 +23,7 @@ function Md5([string]$p) {
 
 # ---------- 환경 ----------
 $os = Get-CimInstance Win32_OperatingSystem
-Log "=== Zippie Windows 시험 $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ==="
+Log "=== Finderie Windows 시험 $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ==="
 Log "OS: $($os.Caption) $($os.Version) / $($env:PROCESSOR_ARCHITECTURE)"
 Log "시스템 로캘: $((Get-WinSystemLocale).Name) / ANSI 코드페이지: $([Text.Encoding]::Default.CodePage) / OEM: $([Console]::OutputEncoding.CodePage)"
 $utf8Beta = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Nls\CodePage').ACP
@@ -127,7 +127,7 @@ foreach ($zip in (Get-ChildItem "$base\zips\*.zip" | Sort-Object Name)) {
 }
 
 # ---------- Windows → Mac: Windows에서 한글 ZIP 만들기 ----------
-Log "■ Windows에서 만든 ZIP (Mac에서 Zippie로 풀어 볼 것)"
+Log "■ Windows에서 만든 ZIP (Mac에서 Finderie로 풀어 볼 것)"
 $src = "$base\win_src\윈도우 폴더"
 New-Item -ItemType Directory -Path "$src\사진", "$src\빈 폴더" -Force | Out-Null
 $samples = @{

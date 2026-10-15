@@ -192,13 +192,13 @@ public final class AppModel: ObservableObject {
         accept(urls)
     }
 
-    /// Finder 우클릭 → "Zippie로 압축": ZIP이 섞여 있어도 고른 것을 그대로 압축한다.
+    /// Finder 우클릭 → "Finderie로 압축": ZIP이 섞여 있어도 고른 것을 그대로 압축한다.
     public func compressNow(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
         enqueue(Job(kind: .compress, inputs: urls, target: ZipWriter.suggestedOutputURL(for: urls)))
     }
 
-    /// Finder 우클릭 → "Zippie로 풀기": 미리보기 없이 바로 푼다 (기본 풀 위치 설정을 따른다).
+    /// Finder 우클릭 → "Finderie로 풀기": 미리보기 없이 바로 푼다 (기본 풀 위치 설정을 따른다).
     public func extractNow(_ urls: [URL]) {
         for zip in urls where zip.pathExtension.lowercased() == "zip" {
             enqueue(Job(kind: .extract, inputs: [zip], target: settings.extractDestination.directory(for: zip)))
@@ -413,7 +413,7 @@ public final class AppModel: ObservableObject {
             return Job.Failure(title: title, reason: "암호가 걸린 ZIP이에요.",
                                hint: "암호 ZIP은 아직 지원하지 않아요. 반디집이나 Mac 기본 압축 풀기를 이용해 주세요.", cleanupNote: cleanup, retryable: false)
         case .unsupportedMethod(_, let method):
-            return Job.Failure(title: title, reason: "Zippie가 아직 모르는 압축 방식(\(method))이에요.",
+            return Job.Failure(title: title, reason: "Finderie가 아직 모르는 압축 방식(\(method))이에요.",
                                hint: "다른 압축 프로그램으로 풀어 보세요.", cleanupNote: cleanup, retryable: false)
         case .unsafePath(let path):
             return Job.Failure(title: title, reason: "압축 파일 밖으로 빠져나가는 위험한 경로가 있어요. (\(path))",

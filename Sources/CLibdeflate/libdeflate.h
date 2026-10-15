@@ -151,7 +151,7 @@ libdeflate_gzip_compress_bound(struct libdeflate_compressor *compressor,
 			       size_t in_nbytes);
 
 /*
- * [Zippie patch] libdeflate_zippie_set_sync_flush() makes the compressor end its
+ * [Finderie patch] libdeflate_finderie_set_sync_flush() makes the compressor end its
  * output without a final block, followed by an empty stored block (like zlib's
  * Z_SYNC_FLUSH).  Outputs made this way can be concatenated, with a normal
  * final chunk at the end, into one valid DEFLATE stream.  The output needs up to
@@ -159,7 +159,7 @@ libdeflate_gzip_compress_bound(struct libdeflate_compressor *compressor,
  * longer than 64 bytes are not supported in this mode.
  */
 LIBDEFLATEAPI void
-libdeflate_zippie_set_sync_flush(struct libdeflate_compressor *compressor,
+libdeflate_finderie_set_sync_flush(struct libdeflate_compressor *compressor,
 				 int enabled);
 
 /*

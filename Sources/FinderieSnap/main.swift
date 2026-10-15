@@ -1,16 +1,16 @@
 import AppKit
 import SwiftUI
 import ZipCore
-import ZippieUI
+import FinderieUI
 
 // 화면 상태를 PNG로 그린다. 실제 작업(압축, 풀기, 오류)은 진짜로 실행해서 그 결과를 그린다.
-//   zippie-snap <출력 폴더> <작업 폴더>
+//   finderie-snap <출력 폴더> <작업 폴더>
 // 작업 폴더에 필요한 것: "여행 사진 2026/" 폴더, "회의 자료_최종.zip"(Windows CP949),
 //                        "계약서 스캔본.zip"(손상), "급여명세.zip"(암호)
 
 let args = CommandLine.arguments
 guard args.count == 3 else {
-    print("usage: zippie-snap <out-dir> <work-dir>")
+    print("usage: finderie-snap <out-dir> <work-dir>")
     exit(1)
 }
 let outDir = URL(fileURLWithPath: args[1])
@@ -67,7 +67,7 @@ MainActor.assumeIsolated {
     let brokenZip = work.appendingPathComponent("계약서 스캔본.zip")
     let lockedZip = work.appendingPathComponent("급여명세.zip")
 
-    // 이 도구의 설정은 앱(com.mxvixxn.zippie)과 다른 저장소에 저장돼서 실제 앱 설정을 건드리지 않는다
+    // 이 도구의 설정은 앱(com.mxvixxn.finderie)과 다른 저장소에 저장돼서 실제 앱 설정을 건드리지 않는다
     let defaults = UserDefaults.standard
     defaults.removeObject(forKey: "skipPreview")
 

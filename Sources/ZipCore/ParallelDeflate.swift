@@ -9,7 +9,7 @@ import Foundation
 ///   마지막이 아닌 조각은 끝 블록 없이 바이트 경계에서 끝나므로(Z_SYNC_FLUSH와 같은 모양) 이어 붙이면 하나의 올바른 deflate 스트림이 되고,
 ///   다른 프로그램은 평범한 ZIP으로 읽는다.
 ///   조각끼리 서로 참조하지 않게(사전 없이) 압축하고 조각 크기 색인(ChunkIndex)을 남겨 두면,
-///   Zippie는 풀 때도 조각들을 여러 코어로 동시에 풀 수 있다.
+///   Finderie는 풀 때도 조각들을 여러 코어로 동시에 풀 수 있다.
 enum ParallelDeflate {
     struct Job {
         let url: URL
@@ -51,7 +51,7 @@ enum ParallelDeflate {
                 return Output(data: raw, crc: crc.final, length: job.length)
             }
             guard let compressor else { throw ZipError.cannotRead(job.name) }
-            // 마지막이 아닌 조각은 끝 표시 없이 바이트 경계에서 끝낸다 (libdeflate에 추가한 Zippie 패치)
+            // 마지막이 아닌 조각은 끝 표시 없이 바이트 경계에서 끝낸다 (libdeflate에 추가한 Finderie 패치)
             let packed = try libdeflateCompress(input, compressor: compressor, syncFlush: !job.isLast, name: job.name)
             return Output(data: packed, crc: crc.final, length: job.length)
         }
@@ -63,8 +63,8 @@ enum ParallelDeflate {
                                    syncFlush: Bool, name: String) throws -> Data {
         // 이 모드는 아주 짧은 입력(64바이트 이하)을 지원하지 않는다. 중간 조각은 항상 64KB 이상이다.
         precondition(!syncFlush || input.count > 64)
-        libdeflate_zippie_set_sync_flush(compressor, syncFlush ? 1 : 0)
-        defer { libdeflate_zippie_set_sync_flush(compressor, 0) }
+        libdeflate_finderie_set_sync_flush(compressor, syncFlush ? 1 : 0)
+        defer { libdeflate_finderie_set_sync_flush(compressor, 0) }
         let capacity = libdeflate_deflate_compress_bound(compressor, input.count) + 8
         var out = Data(count: capacity)
         let n = out.withUnsafeMutableBytes { o in

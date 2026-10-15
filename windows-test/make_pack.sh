@@ -3,8 +3,8 @@
 #   ./make_pack.sh   →   python3 serve.py <VMware 내부망 IP>   →   VM에서 run.ps1 실행
 set -euo pipefail
 cd "$(dirname "$0")"
-CLI="$PWD/../.build/release/zippie-cli"
-[ -x "$CLI" ] || (cd .. && swift build -c release --product zippie-cli)
+CLI="$PWD/../.build/release/finderie-cli"
+[ -x "$CLI" ] || (cd .. && swift build -c release --product finderie-cli)
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 rm -rf zips expected; mkdir -p zips "$TMP/src" "$TMP/z64"
 python3 tools/make_korean_data.py "$TMP/src"
