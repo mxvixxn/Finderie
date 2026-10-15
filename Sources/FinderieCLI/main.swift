@@ -5,6 +5,8 @@ import ZipCore
 //   finderie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> <out.zip> <파일...>
 //   finderie-cli unzip [--threads N] <in.zip>
 //   finderie-cli list <in.zip>
+//   finderie-cli scan <파일...>
+//   finderie-cli prep [--in-place] [--skip names,junk,csv,heic] <파일...>
 var args = Array(CommandLine.arguments.dropFirst())
 func fail(_ msg: String) -> Never { FileHandle.standardError.write((msg + "\n").data(using: .utf8)!); exit(1) }
 
@@ -24,8 +26,25 @@ func takeFlags() {
     }
 }
 
+func printReport(_ r: SendPrep.Report) {
+    print("files=\(r.fileCount) folders=\(r.folderCount) bytes=\(r.totalBytes)")
+    for i in r.issues { print("\(i.kind.rawValue)\t\(i.path)\(i.after.map { "\t→ " + $0 } ?? "")") }
+}
+
 do {
     let cmd = args.isEmpty ? "" : args.removeFirst()
+    var mode = SendPrep.Mode.copy
+    var fixes = Set(SendPrep.Fix.allCases)
+    if cmd == "prep" {
+        while let f = args.first, f.hasPrefix("--") {
+            args.removeFirst()
+            switch f {
+            case "--in-place": mode = .inPlace
+            case "--skip": for s in args.removeFirst().split(separator: ",") { fixes.remove(SendPrep.Fix(rawValue: String(s)) ?? .names) }
+            default: fail("unknown flag \(f)")
+            }
+        }
+    }
     takeFlags()
     switch cmd {
     case "zip" where args.count >= 3:
@@ -37,6 +56,15 @@ do {
         print("\(r.destination.path) files=\(r.fileCount) encoding=\(r.encoding.rawValue) sequential=\(r.sequentialIO)")
     case "list" where args.count == 1:
         for e in try ZipReader.entries(of: URL(fileURLWithPath: args[0])) { print("\(e.encoding.rawValue)\t\(e.name)") }
+    case "scan" where !args.isEmpty:
+        printReport(try SendPrep.scan(args.map { URL(fileURLWithPath: $0) }))
+    case "prep" where !args.isEmpty:
+        let report = try SendPrep.scan(args.map { URL(fileURLWithPath: $0) })
+        printReport(report)
+        let o = try SendPrep.apply(report, fixes: fixes, mode: mode)
+        print("renamed=\(o.renamed) removed=\(o.removed) bom=\(o.bomAdded) converted=\(o.converted) trashed=\(o.trashed.count)")
+        print("folder=\(o.folder?.path ?? "-")")
+        for item in o.items { print("item=\(item.path)") }
     default:
         fail("usage: finderie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> out.zip files... | unzip in.zip | list in.zip")
     }

@@ -7,6 +7,8 @@ import FinderieUI
 //   finderie-snap <출력 폴더> <작업 폴더>
 // 작업 폴더에 필요한 것: "여행 사진 2026/" 폴더, "회의 자료_최종.zip"(Windows CP949),
 //                        "계약서 스캔본.zip"(손상), "급여명세.zip"(암호)
+// 보내기 준비 화면은 "제안서 자료/"(windows-test/make_prep_fixture.py)가 있을 때 그린다.
+// 압축 화면은 "여행 사진 2026/"이 있을 때만 그린다.
 
 let args = CommandLine.arguments
 guard args.count == 3 else {
@@ -70,6 +72,33 @@ MainActor.assumeIsolated {
     // 이 도구의 설정은 앱(com.mxvixxn.finderie)과 다른 저장소에 저장돼서 실제 앱 설정을 건드리지 않는다
     let defaults = UserDefaults.standard
     defaults.removeObject(forKey: "skipPreview")
+
+    let prepFolder = work.appendingPathComponent("제안서 자료")
+    if FileManager.default.fileExists(atPath: prepFolder.path) {
+        // P1. 보내기 준비: 기다림
+        let p1 = AppModel(loadsHistory: false)
+        SnapshotSupport.setTab(p1, prep: true)
+        render("p1-prep-idle") { MainView(model: p1) }
+
+        // P2. 끌고 들어옴
+        SnapshotSupport.setDragging(p1, isExtract: false, summary: "폴더 1개 · 파일 15개 · 8.7 KB")
+        render("p2-prep-dragging") { MainView(model: p1) }
+
+        // P3. 보고서 (실제로 검사한다)
+        let p3 = AppModel(loadsHistory: false)
+        p3.prepareNow([prepFolder])
+        waitIdle(p3)
+        print(SnapshotSupport.describePrep(p3))
+        render("p3-prep-report") { MainView(model: p3) }
+
+        // P4. 완료 (실제로 복사본을 만든다)
+        SnapshotSupport.runPrepCopy(p3)
+        waitIdle(p3)
+        print(SnapshotSupport.describePrep(p3))
+        render("p4-prep-done") { MainView(model: p3) }
+        SnapshotSupport.setTab(p3, prep: false)
+    }
+    guard FileManager.default.fileExists(atPath: folder.path) else { return }
 
     // 1. 기다림
     let idle = AppModel(loadsHistory: false)

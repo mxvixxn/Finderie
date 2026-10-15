@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let (action, items) = FinderLink.parse(url) else { return }
         NSApp.activate(ignoringOtherApps: true)
         switch action {
+        case .prepare: model.prepareNow(items)
         case .compress: model.compressNow(items)
         case .extract: model.extractNow(items)
         }

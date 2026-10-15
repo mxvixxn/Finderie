@@ -1,8 +1,26 @@
 # Finderie
 
-Mac용 ZIP 압축 앱. Windows와 주고받을 때 한글 파일 이름이 깨지지 않게 하는 데 초점을 맞췄다.
+Windows로 파일을 보내기 전에 쓰는 Mac 도구. 받는 사람 컴퓨터에서 한글 이름이나 내용이 깨지지 않게 미리 고친다.
+압축(ZIP)은 그 옆의 부가 기능이다.
 
-## 기능
+## 보내기 준비 (압축 없이)
+
+파일이나 폴더를 놓으면 먼저 검사해서 보고서를 보여 주고, 고칠 항목을 켜고 끈 뒤 고친다.
+
+- **이름**: 자모가 풀린 한글(NFD → NFC), Windows에서 못 쓰는 글자(`\ / : * ? " < > |`), 예약된 이름(CON, AUX, COM1…),
+  끝의 점·공백, 고친 뒤 겹치는 이름(대소문자 무시)
+- **Mac 숨김 파일**: `.DS_Store`, `._파일`, `__MACOSX`
+- **CSV**: BOM 없는 UTF-8이고 한글이 있으면 BOM을 붙여 Excel에서 깨지지 않게 (CP949 CSV는 그대로)
+- **HEIC 사진 → JPG** (사진 정보 유지)
+- **경고만**: Pages·Numbers·Keynote 문서, 인터넷 바로가기, 앱·설치 파일, 가상본·링크, 260자 넘는 경로
+
+저장 방식은 매번 고른다. **복사본 만들기**는 원본 옆 `Windows로 보낼 파일` 폴더에, **원본 고치기**는 확인 후 이름을
+직접 바꾸고 지우는 파일은 휴지통으로 옮긴다. 끝나고 ZIP으로 묶을 수도 있다.
+
+macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하므로, 이름을 만들고 바꾸는 일은 POSIX 함수로 한다
+(`Sources/ZipCore/SendPrep.swift`).
+
+## 압축 기능
 
 - **한글 이름 호환**: 압축할 때 이름 인코딩을 고를 수 있다.
   - Windows 호환 · UTF-8 (권장): 완성형(NFC) + UTF-8 표시
@@ -17,7 +35,7 @@ Mac용 ZIP 압축 앱. Windows와 주고받을 때 한글 파일 이름이 깨�
 
 ## Finder에서 바로 쓰기
 
-파일이나 폴더를 우클릭 → **Finderie로 압축** / **Finderie로 풀기**(ZIP을 골랐을 때).
+파일이나 폴더를 우클릭 → **Windows로 보낼 준비** / **Finderie로 압축** / **Finderie로 풀기**(ZIP을 골랐을 때).
 압축은 지금 설정(한글 이름 방식, 속도)대로 바로 하고, 풀기는 미리보기 없이 기본 풀 위치에 푼다.
 
 - 메뉴 맨 위에 나오는 항목은 Finder 확장(`Extension/`, 앱 안의 `FinderieExtension.appex`)이 넣는다.
@@ -31,6 +49,8 @@ Mac용 ZIP 압축 앱. Windows와 주고받을 때 한글 파일 이름이 깨�
 ```bash
 ./build.sh            # Finderie.app 생성
 swift build -c release --product finderie-cli   # 시험용 명령줄 도구
+.build/release/finderie-cli scan <파일...>        # 보내기 준비 검사만
+python3 windows-test/make_prep_fixture.py <폴더>  # 문제가 고루 섞인 시험 폴더 만들기
 ```
 
 ## 구조

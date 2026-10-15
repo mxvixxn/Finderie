@@ -40,8 +40,29 @@ public enum SnapshotSupport {
         }
     }
 
-    /// 아직 진행 중인 일이 있는지 (작업, 미리보기 불러오기)
+    /// 아직 진행 중인 일이 있는지 (작업, 미리보기 불러오기, 보내기 준비)
     public static func isBusy(_ model: AppModel) -> Bool {
-        model.jobs.contains(where: \.isActive) || model.preview?.loading == true
+        model.jobs.contains(where: \.isActive) || model.preview?.loading == true || model.prep?.isBusy == true
+    }
+
+    public static func setTab(_ model: AppModel, prep: Bool) {
+        model.settings.tab = prep ? .prep : .zip
+    }
+
+    /// 보고서 상태에서 [복사본 만들기]
+    public static func runPrepCopy(_ model: AppModel) {
+        guard let prep = model.prep, case .ready(let report) = prep.phase else { return }
+        prep.run(report, mode: .copy)
+    }
+
+    public static func describePrep(_ model: AppModel) -> String {
+        guard let prep = model.prep else { return "prep: none" }
+        switch prep.phase {
+        case .scanning: return "prep: scanning"
+        case .ready(let r): return "prep: ready files=\(r.fileCount) issues=\(r.issues.count) fixable=\(r.fixable.map(\.rawValue).sorted())"
+        case .working: return "prep: working"
+        case .done(_, let o, let zip): return "prep: done renamed=\(o.renamed) removed=\(o.removed) bom=\(o.bomAdded) converted=\(o.converted) zip=\(zip?.lastPathComponent ?? "-") folder=\(o.folder?.lastPathComponent ?? "-")"
+        case .failed(let m, _): return "prep: failed \(m)"
+        }
     }
 }

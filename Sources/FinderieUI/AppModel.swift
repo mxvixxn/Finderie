@@ -30,7 +30,16 @@ public enum ExtractDestination: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// 앱 설정. 값은 UserDefaults에 저장돼서 다음에 켜도 그대로다.
+/// 창 맨 위 탭
+public enum AppTab: String, CaseIterable, Identifiable, Sendable {
+    case prep, zip
+    public var id: String { rawValue }
+    var title: String { self == .prep ? "보내기 준비" : "압축" }
+}
+
 public final class AppSettings: ObservableObject {
+    @AppStorage("tab") public var tab: AppTab = .prep
+    @AppStorage("prepMakeZip") public var prepMakeZip = false
     @AppStorage("nameEncoding") public var nameEncoding: NameEncoding = .windowsUTF8
     @AppStorage("level") public var level: CompressionLevel = .normal
     @AppStorage("excludeMacFiles") public var excludeMacFiles = true
@@ -141,6 +150,8 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var jobs: [Job] = []
     @Published var history: [HistoryItem] = []
     @Published var preview: PreviewModel?
+    /// 보내기 준비 탭의 진행 상태 (nil이면 파일을 기다린다)
+    @Published var prep: PrepModel?
     @Published var dragInfo: DragInfo?
     @Published var isDropTargeted = false
 
@@ -161,6 +172,10 @@ public final class AppModel: ObservableObject {
     /// chooseLocation이 true면(⌥ 누른 채 놓기) 저장 위치를 먼저 묻는다.
     public func accept(_ urls: [URL], chooseLocation: Bool = false) {
         guard !urls.isEmpty else { return }
+        if settings.tab == .prep {
+            startPrep(urls)
+            return
+        }
         let zips = urls.filter { $0.pathExtension.lowercased() == "zip" }
         if zips.count == urls.count {
             if zips.count == 1 && !settings.skipPreview && !chooseLocation {
@@ -188,8 +203,24 @@ public final class AppModel: ObservableObject {
 
     /// 파일 선택 창으로 고르기
     public func chooseFiles() {
-        let urls = Panels.pickItems()
+        let urls = Panels.pickItems(message: settings.tab == .prep
+            ? "Windows로 보낼 파일이나 폴더를 고르세요"
+            : "ZIP을 고르면 풀고, 다른 파일이나 폴더를 고르면 압축해요")
         accept(urls)
+    }
+
+    /// Finder 우클릭 → "Windows로 보낼 준비"
+    public func prepareNow(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        settings.tab = .prep
+        startPrep(urls)
+    }
+
+    func startPrep(_ urls: [URL]) {
+        if prep?.isBusy == true { return }
+        let model = PrepModel(urls: urls, settings: settings)
+        prep = model
+        model.scan()
     }
 
     /// Finder 우클릭 → "Finderie로 압축": ZIP이 섞여 있어도 고른 것을 그대로 압축한다.
@@ -485,13 +516,13 @@ enum FileStats {
 // MARK: - 파일 선택 창
 
 enum Panels {
-    @MainActor static func pickItems() -> [URL] {
+    @MainActor static func pickItems(message: String) -> [URL] {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = true
         panel.canChooseFiles = true
         panel.prompt = "선택"
-        panel.message = "ZIP을 고르면 풀고, 다른 파일이나 폴더를 고르면 압축해요"
+        panel.message = message
         return panel.runModal() == .OK ? panel.urls : []
     }
 

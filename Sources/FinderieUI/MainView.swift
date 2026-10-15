@@ -6,14 +6,25 @@ import ZipCore
 /// Finderie 메인 창의 내용. 상태(기다림 · 미리보기 · 작업 중 · 완료 · 오류)에 따라 구성이 바뀐다.
 public struct MainView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var settings: AppSettings
 
     public init(model: AppModel) {
         self.model = model
+        self.settings = model.settings
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if let preview = model.preview {
+            Picker("화면", selection: $settings.tab) {
+                ForEach(AppTab.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .disabled(model.prep?.isBusy == true)
+
+            if settings.tab == .prep {
+                PrepScreen(model: model)
+            } else if let preview = model.preview {
                 PreviewView(preview: preview, model: model)
             } else if model.jobs.isEmpty {
                 DropWell(model: model, size: .large)
@@ -39,6 +50,7 @@ public struct MainView: View {
         .frame(width: 440)
         .onDrop(of: [.fileURL], delegate: FileDropDelegate(model: model))
         .animation(.snappy(duration: 0.25), value: model.jobs.map(\.id))
+        .animation(.snappy(duration: 0.2), value: settings.tab)
         .animation(.snappy(duration: 0.2), value: model.isDropTargeted)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -163,7 +175,8 @@ struct FileDropDelegate: DropDelegate {
     let model: AppModel
 
     func validateDrop(info: DropInfo) -> Bool {
-        model.preview == nil && info.hasItemsConforming(to: [.fileURL])
+        let free = model.settings.tab == .prep ? model.prep?.isBusy != true : model.preview == nil
+        return free && info.hasItemsConforming(to: [.fileURL])
     }
 
     func dropEntered(info: DropInfo) {

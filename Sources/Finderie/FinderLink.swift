@@ -1,10 +1,10 @@
 import Foundation
 
-/// Finder 확장(FinderieExtension.appex)이 보낸 finderie://compress?token=…&path=… 주소를 해석한다.
+/// Finder 확장(FinderieExtension.appex)이 보낸 finderie://prepare|compress|extract?token=…&path=… 주소를 해석한다.
 /// 확장이 자기 샌드박스 컨테이너에 저장해 둔 비밀 값과 맞을 때만 받아들인다.
 /// 그래서 웹사이트 같은 다른 곳이 이 주소를 열어도 아무 일도 일어나지 않는다.
 enum FinderLink {
-    enum Action { case compress, extract }
+    enum Action { case prepare, compress, extract }
 
     static let scheme = "finderie"
     private static let extensionID = "com.mxvixxn.finderie.finder"
@@ -14,6 +14,7 @@ enum FinderLink {
               let comps = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
         let action: Action
         switch comps.host {
+        case "prepare": action = .prepare
         case "compress": action = .compress
         case "extract": action = .extract
         default: return nil

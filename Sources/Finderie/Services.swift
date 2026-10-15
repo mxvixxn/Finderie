@@ -1,7 +1,7 @@
 import AppKit
 import FinderieUI
 
-/// Finder 우클릭 → 빠른 동작(서비스)의 "Finderie로 압축 / 풀기"를 받는다.
+/// Finder 우클릭 → 빠른 동작(서비스)의 "Windows로 보낼 준비", "Finderie로 압축 / 풀기"를 받는다.
 /// 메뉴 이름과 메시지 이름은 Info.plist의 NSServices(build.sh)와 짝이다.
 @MainActor
 final class ServiceProvider: NSObject {
@@ -9,6 +9,13 @@ final class ServiceProvider: NSObject {
 
     init(model: AppModel) {
         self.model = model
+    }
+
+    @objc func prepareFiles(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString>) {
+        let urls = Self.fileURLs(in: pboard)
+        guard !urls.isEmpty else { error.pointee = "준비할 파일을 찾지 못했어요."; return }
+        bringToFront()
+        model.prepareNow(urls)
     }
 
     @objc func compressFiles(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString>) {
