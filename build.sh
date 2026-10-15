@@ -34,6 +34,14 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSHighResolutionCapable</key><true/>
+  <!-- Finder 확장(ZippieFinder.appex)이 앱을 부르는 주소 -->
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>com.mxvixxn.zippie.finder-link</string>
+      <key>CFBundleURLSchemes</key><array><string>zippie</string></array>
+    </dict>
+  </array>
   <!-- Finder 우클릭 → 빠른 동작/서비스 메뉴. NSRequiredContext가 있어야 처음부터 켜진 상태로 나온다 -->
   <key>NSServices</key>
   <array>
@@ -71,5 +79,17 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+# Finder 확장: 우클릭 메뉴 맨 위의 "Zippie로 압축 / 풀기"
+APPEX="$APP/Contents/PlugIns/ZippieFinder.appex"
+mkdir -p "$APPEX/Contents/MacOS"
+cp Extension/Info.plist "$APPEX/Contents/Info.plist"
+xcrun swiftc -O -module-name ZippieFinder -parse-as-library -application-extension \
+  -target "$(uname -m)-apple-macos14.0" -sdk "$(xcrun --show-sdk-path)" \
+  Extension/FinderSync.swift -framework FinderSync -framework Cocoa \
+  -Xlinker -e -Xlinker _NSExtensionMain \
+  -o "$APPEX/Contents/MacOS/ZippieFinder"
+codesign --force --sign - --entitlements Extension/ZippieFinder.entitlements "$APPEX"
+
+# 앱 서명 (확장을 먼저 서명했으니 --deep은 쓰지 않는다)
 codesign --force --sign - "$APP"
 echo "완료: $PWD/$APP"
