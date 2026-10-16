@@ -30,7 +30,7 @@ func takeFlags() {
 
 func printReport(_ r: SendPrep.Report) {
     print("files=\(r.fileCount) folders=\(r.folderCount) bytes=\(r.totalBytes)")
-    for i in r.issues { print("\(i.kind.rawValue)\t\(i.path)\(i.after.map { "\t→ " + $0 } ?? "")") }
+    for i in r.issues { print("\(i.kind.rawValue)\t\(i.path)\(i.after.map { "\t→ " + $0 } ?? "")\(i.note.map { "\t(" + $0 + ")" } ?? "")") }
 }
 
 do {
@@ -68,7 +68,7 @@ do {
         let report = try SendPrep.scan(args.map { URL(fileURLWithPath: $0) })
         printReport(report)
         let o = try SendPrep.apply(report, fixes: fixes, mode: mode)
-        print("renamed=\(o.renamed) removed=\(o.removed) bom=\(o.bomAdded) converted=\(o.converted) trashed=\(o.trashed.count)")
+        print("renamed=\(o.renamed) removed=\(o.removed) bom=\(o.bomAdded) converted=\(o.converted) cleaned=\(o.cleaned) trashed=\(o.trashed.count)")
         print("folder=\(o.folder?.path ?? "-")")
         for item in o.items { print("item=\(item.path)") }
     case "shrink" where !args.isEmpty:

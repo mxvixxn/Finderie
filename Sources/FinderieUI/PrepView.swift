@@ -107,6 +107,7 @@ public final class PrepModel: ObservableObject {
         if fixes.contains(.junk) { lines.append("Mac 숨김 파일은 휴지통으로 옮겨요.") }
         if fixes.contains(.heic) { lines.append("HEIC 사진은 JPG로 바꾸고 원본은 휴지통으로 옮겨요.") }
         if fixes.contains(.csv) { lines.append("CSV 파일 맨 앞에 한글 표시(BOM)를 붙여요.") }
+        if fixes.contains(.privacy) { lines.append("개인정보를 지운 파일로 바꾸고 원래 파일은 휴지통으로 옮겨요.") }
         alert.informativeText = lines.joined(separator: "\n")
         alert.addButton(withTitle: "원본 고치기")
         alert.addButton(withTitle: "취소")
@@ -130,6 +131,7 @@ extension SendPrep.Fix {
         case .junk: return "Mac 숨김 파일 빼기"
         case .csv: return "CSV 엑셀 깨짐 막기"
         case .heic: return "HEIC 사진을 JPG로"
+        case .privacy: return "개인정보 지우기"
         }
     }
 
@@ -139,6 +141,7 @@ extension SendPrep.Fix {
         case .junk: return ".DS_Store, ._파일처럼 Windows에 필요 없는 파일"
         case .csv: return "한글 표시(BOM)를 붙여 엑셀이 바로 읽게 해요"
         case .heic: return "Windows 기본 사진 앱에서도 열려요"
+        case .privacy: return "사진 위치·기기 정보, 문서 작성자 (화질은 그대로)"
         }
     }
 
@@ -148,6 +151,7 @@ extension SendPrep.Fix {
         case .junk: return "eye.slash"
         case .csv: return "tablecells"
         case .heic: return "photo"
+        case .privacy: return "hand.raised"
         }
     }
 }
@@ -163,6 +167,10 @@ extension SendPrep.IssueKind {
         case .junk: return "Mac 숨김 파일"
         case .csvWithoutBOM: return "엑셀에서 한글이 깨져요"
         case .heic: return "HEIC 사진"
+        case .photoLocation: return "찍은 위치(GPS)가 들어 있어요"
+        case .photoDevice: return "카메라·기기 정보"
+        case .videoLocation: return "찍은 위치가 들어 있어요"
+        case .documentAuthor: return "작성자 이름"
         case .macOnlyDocument: return "Mac 전용 문서예요. PDF나 Office 형식으로 내보내 주세요"
         case .macShortcut: return "Mac 인터넷 바로가기라 Windows에서 안 열려요"
         case .macApp: return "Mac 앱이라 Windows에서 실행할 수 없어요"
@@ -192,6 +200,7 @@ struct PrepScreen: View {
                 ("character.textbox", "한글 이름", "자모가 풀린 이름, 못 쓰는 글자, 겹치는 이름"),
                 ("tablecells", "CSV 파일", "엑셀에서 한글이 깨지지 않게"),
                 ("photo", "HEIC 사진", "어디서나 열리는 JPG로"),
+                ("hand.raised", "개인정보", "사진 위치·기기 정보, 문서 작성자"),
                 ("exclamationmark.triangle", "열 수 없는 파일", "Mac 전용 문서, 바로가기, 너무 긴 경로"),
             ])
         }
@@ -377,7 +386,7 @@ struct FixCard: View {
         var map: [String: (String?, [String])] = [:]
         for issue in issues {
             if map[issue.path] == nil { order.append(issue.path); map[issue.path] = (issue.after, []) }
-            map[issue.path]?.1.append(issue.kind.reason)
+            map[issue.path]?.1.append(issue.note.map { "\(issue.kind.reason): \($0)" } ?? issue.kind.reason)
         }
         return order.map { ($0, map[$0]?.0, map[$0]?.1 ?? []) }
     }
@@ -499,6 +508,7 @@ struct PrepDoneCard: View {
         if outcome.removed > 0 { out.append("숨김 파일 \(outcome.removed)개 뺌") }
         if outcome.bomAdded > 0 { out.append("CSV \(outcome.bomAdded)개 엑셀용으로") }
         if outcome.converted > 0 { out.append("사진 \(outcome.converted)장 JPG로") }
+        if outcome.cleaned > 0 { out.append("개인정보 \(outcome.cleaned)개 파일에서 지움") }
         return out
     }
 

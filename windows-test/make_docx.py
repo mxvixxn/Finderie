@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
-"""사진이 들어간 최소한의 Word 문서를 만든다: python3 make_docx.py <사진.jpg> <출력.docx>"""
+"""사진이 들어간 최소한의 Word 문서를 만든다: python3 make_docx.py <사진.jpg> <출력.docx> [작성자]"""
 import sys, zipfile
 img, out = sys.argv[1], sys.argv[2]
+author = sys.argv[3] if len(sys.argv) > 3 else None
 ct = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
 <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
 <Default Extension="xml" ContentType="application/xml"/>
 <Default Extension="jpg" ContentType="image/jpeg"/>
+<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
 <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
 </Types>'''
 rels = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
 </Relationships>'''
+who = author or ""
+core = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<dc:title>보고서</dc:title><dc:creator>{who}</dc:creator><cp:lastModifiedBy>{who}</cp:lastModifiedBy>
+</cp:coreProperties>'''
+app = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Microsoft Office Word</Application><Company>{"파인더리 주식회사" if author else ""}</Company></Properties>'''
 docrels = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rIdImg" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.jpg"/>
@@ -37,5 +49,7 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
     z.writestr("[Content_Types].xml", ct)
     z.writestr("_rels/.rels", rels)
     z.writestr("word/document.xml", doc)
+    z.writestr("docProps/core.xml", core)
+    z.writestr("docProps/app.xml", app)
     z.writestr("word/_rels/document.xml.rels", docrels)
     z.write(img, "word/media/image1.jpg", compress_type=zipfile.ZIP_STORED)

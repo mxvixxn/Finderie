@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 public enum SendPrep {
     /// 켜고 끌 수 있는 고치기 묶음
     public enum Fix: String, CaseIterable, Identifiable, Sendable {
-        case names, junk, csv, heic
+        case names, junk, csv, heic, privacy
         public var id: String { rawValue }
     }
 
@@ -22,6 +22,8 @@ public enum SendPrep {
         case decomposed, forbiddenChars, reservedName, trailingDotSpace, duplicateName
         // 나머지 고치기
         case junk, csvWithoutBOM, heic
+        // 개인정보 (Fix.privacy)
+        case photoLocation, photoDevice, videoLocation, documentAuthor
         // 확인만 할 것
         case macOnlyDocument, macShortcut, macApp, macInstaller, alias, symlink, longPath
 
@@ -31,6 +33,7 @@ public enum SendPrep {
             case .junk: return .junk
             case .csvWithoutBOM: return .csv
             case .heic: return .heic
+            case .photoLocation, .photoDevice, .videoLocation, .documentAuthor: return .privacy
             default: return nil
             }
         }
@@ -43,6 +46,8 @@ public enum SendPrep {
         public let path: String
         /// 고친 뒤 이름 (이름 문제, HEIC일 때)
         public let after: String?
+        /// 찾은 내용 (카메라 모델, 작성자 이름 등)
+        public var note: String? = nil
     }
 
     public enum Mode: String, CaseIterable, Identifiable, Sendable {
@@ -62,6 +67,7 @@ public enum SendPrep {
         public var removed = 0
         public var bomAdded = 0
         public var converted = 0
+        public var cleaned = 0
         public var trashed: [URL] = []
     }
 
@@ -107,6 +113,7 @@ public enum SendPrep {
         var children: [Node] = []
         var isJunk = false
         var csvNeedsBOM = false
+        var privacy: [Privacy.Finding] = []
         var isHEIC = false
 
         init(path: String, name: String, isDirectory: Bool, isPackage: Bool, isSymlink: Bool, isAlias: Bool, size: UInt64) {
@@ -156,6 +163,7 @@ public enum SendPrep {
                 let ext = (name as NSString).pathExtension.lowercased()
                 if ext == "heic" || ext == "heif" { node.isHEIC = true }
                 if ext == "csv" || ext == "tsv" { node.csvNeedsBOM = needsBOM(path) }
+                if kind == S_IFREG { node.privacy = Privacy.inspect(path) }
             }
             return node
         }
@@ -196,6 +204,7 @@ public enum SendPrep {
         }
         if node.isHEIC { issues.append(Issue(kind: .heic, path: shown, after: display(finalName))) }
         if node.csvNeedsBOM { issues.append(Issue(kind: .csvWithoutBOM, path: shown, after: nil)) }
+        for found in node.privacy { issues.append(Issue(kind: found.kind, path: shown, after: nil, note: found.note)) }
 
         if let warning = warningKind(node) { issues.append(Issue(kind: warning, path: shown, after: nil)) }
         // Windows 기본 경로 길이 260자. 받는 사람의 "C:\Users\이름\Downloads\" 몫으로 50자를 남겨 둔다.
@@ -374,7 +383,7 @@ public enum SendPrep {
                 items.append(URL(fileURLWithPath: dst))
             }
             return Outcome(items: items, folder: outcome.folder, renamed: outcome.renamed, removed: outcome.removed,
-                           bomAdded: outcome.bomAdded, converted: outcome.converted, trashed: [])
+                           bomAdded: outcome.bomAdded, converted: outcome.converted, cleaned: outcome.cleaned, trashed: [])
 
         case .inPlace:
             var outcome = Outcome(items: [], folder: nil)
@@ -392,7 +401,8 @@ public enum SendPrep {
             }
             let items = report.tree.compactMap { finalPaths[ObjectIdentifier($0)] }.map { URL(fileURLWithPath: $0) }
             return Outcome(items: items, folder: nil, renamed: outcome.renamed, removed: outcome.removed,
-                           bomAdded: outcome.bomAdded, converted: outcome.converted, trashed: outcome.trashed)
+                           bomAdded: outcome.bomAdded, converted: outcome.converted, cleaned: outcome.cleaned,
+                           trashed: outcome.trashed)
         }
     }
 
@@ -412,9 +422,16 @@ public enum SendPrep {
             return
         }
         try step(node)
+        let clean = fixes.contains(.privacy) && !node.privacy.isEmpty
         if node.isHEIC && fixes.contains(.heic) {
             try convertToJPEG(node.path, to: dst)
             outcome.converted += 1
+            if clean { try stripInPlace(dst); outcome.cleaned += 1 }
+        } else if clean {
+            let tmp = (dst as NSString).deletingLastPathComponent + "/.finderie-\(UUID().uuidString)." + (node.name as NSString).pathExtension
+            do { try Privacy.strip(node.path, to: tmp) } catch { unlink(tmp); throw error }
+            try POSIX.rename(tmp, dst)
+            outcome.cleaned += 1
         } else if node.csvNeedsBOM && fixes.contains(.csv) {
             try POSIX.copy(node.path, dst, recursive: false)
             try prependBOM(dst)
@@ -444,9 +461,11 @@ public enum SendPrep {
             }
         } else {
             try step(node)
+            let clean = fixes.contains(.privacy) && !node.privacy.isEmpty
             if node.isHEIC && fixes.contains(.heic) {
                 let jpg = freePath(parent + "/" + planned.name, except: nil)
                 try convertToJPEG(node.path, to: jpg)
+                if clean { try stripInPlace(jpg); outcome.cleaned += 1 }
                 var trashed: NSURL?
                 try FileManager.default.trashItem(at: URL(fileURLWithPath: node.path), resultingItemURL: &trashed)
                 if let t = trashed as URL? { outcome.trashed.append(t) }
@@ -457,6 +476,16 @@ public enum SendPrep {
                 try prependBOM(current)
                 outcome.bomAdded += 1
             }
+            if clean {
+                // 정보를 뺀 사본을 만든 뒤 원래 파일은 휴지통으로
+                let tmp = parent + "/.finderie-\(UUID().uuidString)." + (node.name as NSString).pathExtension
+                do { try Privacy.strip(current, to: tmp) } catch { unlink(tmp); throw error }
+                var trashed: NSURL?
+                try FileManager.default.trashItem(at: URL(fileURLWithPath: current), resultingItemURL: &trashed)
+                if let t = trashed as URL? { outcome.trashed.append(t) }
+                try POSIX.rename(tmp, current)
+                outcome.cleaned += 1
+            }
         }
         if differs(planned.name, node.name) {
             let target = freePath(parent + "/" + planned.name, except: current)
@@ -465,6 +494,13 @@ public enum SendPrep {
             outcome.renamed += 1
         }
         return current
+    }
+
+    /// 이미 만든 파일(우리가 만든 복사본)의 개인정보를 그 자리에서 지운다
+    private static func stripInPlace(_ path: String) throws {
+        let tmp = (path as NSString).deletingLastPathComponent + "/.finderie-\(UUID().uuidString)." + (path as NSString).pathExtension
+        do { try Privacy.strip(path, to: tmp) } catch { unlink(tmp); throw error }
+        try POSIX.rename(tmp, path)
     }
 
     /// path가 비어 있으면 그대로, 다른 파일이 있으면 " 2", " 3"을 붙인다.
