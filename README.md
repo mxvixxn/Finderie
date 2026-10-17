@@ -29,8 +29,9 @@ macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하�
 
 | 종류 | 하는 일 |
 |---|---|
-| 사진 (JPG·HEIC·PNG·TIFF·BMP) | 긴 변 3840 / 2560 / 1600px, 화질 낮추기. TIFF·BMP는 JPG로. 사진 정보 유지 |
-| 영상 (MOV·MP4·M4V) | H.264 MP4 1080p / 720p / 540p로 다시 인코딩 |
+| 사진 (JPG·HEIC·PNG·TIFF·BMP·WebP·AVIF) | 긴 변 3840 / 2560 / 1600px, 화질 낮추기. TIFF·BMP는 JPG로. 사진 정보 유지 (WebP는 libwebp로 저장해 사진 정보 없음) |
+| 영상 (MOV·MP4·M4V) | 최대 1080p / 720p / 540p MP4로 다시 인코딩 (AVAssetReader/Writer). H.264가 기본이고 **HEVC**를 고르면 약 40% 더 작다. 방향은 바로 세우고 HDR은 SDR로 |
+| 화면 녹화 (이름이 '화면 기록', 'Screen Recording' 등) | 글씨가 뭉개지지 않게 해상도는 3840 / 2560 / 1920까지 두고 **30fps**로 낮춘다 |
 | PDF | 안의 이미지 해상도·화질 낮추기 (미리보기의 '파일 크기 줄이기'와 같은 Quartz 필터) |
 | 무손실 소리 (WAV·AIFF·CAF·FLAC·ALAC) | AAC 256 / 192 / 128kbps M4A로. 48kHz 넘는 고해상도는 48kHz로, 곡 정보·표지는 그대로. 이미 AAC인 m4a는 그대로 |
 

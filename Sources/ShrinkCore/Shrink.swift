@@ -1,4 +1,5 @@
 import AVFoundation
+import ConvertCore
 import Foundation
 import ImageIO
 import PDFKit
@@ -24,9 +25,7 @@ public enum Shrink {
         var photoQuality: Double { [0.85, 0.75, 0.6][rawValue] }
         /// 같은 해상도일 때 대략 남는 비율 (보통 사진기 화질 0.9~0.95 기준)
         var qualityFactor: Double { [0.75, 0.55, 0.4][rawValue] }
-        var videoPreset: String { [AVAssetExportPreset1920x1080, AVAssetExportPreset1280x720, AVAssetExportPreset960x540][rawValue] }
-        /// 영상 프리셋의 대략적인 비트레이트 (영상 + 소리, bps)
-        var videoBitrate: Double { [10_500_000, 5_500_000, 3_000_000][rawValue] }
+        /// 영상 짧은 변 상한 (화면 녹화는 더 크게 둔다)
         public var videoLabel: String { ["1080p", "720p", "540p"][rawValue] }
         /// 소리 AAC 비트레이트 (스테레오 기준)
         var audioBitrate: Int { [256_000, 192_000, 128_000][rawValue] }
@@ -41,7 +40,7 @@ public enum Shrink {
 
         static func of(_ name: String) -> Kind? {
             switch (name as NSString).pathExtension.lowercased() {
-            case "jpg", "jpeg", "heic", "heif", "png", "tif", "tiff", "bmp": return .photo
+            case "jpg", "jpeg", "heic", "heif", "png", "tif", "tiff", "bmp", "webp", "avif": return .photo
             case "mov", "mp4", "m4v": return .video
             case "pdf": return .pdf
             case "wav", "aif", "aiff", "aifc", "caf", "flac", "m4a": return .audio
@@ -60,8 +59,12 @@ public enum Shrink {
         public let estimates: [UInt64]
         /// "4032×3024", "3분 12초 · 4K" 같은 설명
         public let detail: String
+        /// 영상을 HEVC로 만들 때의 단계별 예상 크기
+        var hevcEstimates: [UInt64]? = nil
 
-        public func estimate(_ level: Level) -> UInt64 { estimates[level.rawValue] }
+        public func estimate(_ level: Level, hevc: Bool = false) -> UInt64 {
+            (hevc ? hevcEstimates ?? estimates : estimates)[level.rawValue]
+        }
     }
 
     public struct Outcome: Sendable {
@@ -95,9 +98,9 @@ public enum Shrink {
         public var kinds: [Kind] { Kind.allCases.filter { k in items.contains { $0.kind == k } } }
 
         /// 고른 종류와 단계로 줄였을 때 전체 예상 크기
-        public func estimatedTotal(kinds: Set<Kind>, level: Level) -> UInt64 {
+        public func estimatedTotal(kinds: Set<Kind>, level: Level, hevc: Bool = false) -> UInt64 {
             let chosen = items.filter { kinds.contains($0.kind) }
-            return totalBytes - chosen.reduce(0) { $0 + $1.size } + chosen.reduce(0) { $0 + $1.estimate(level) }
+            return totalBytes - chosen.reduce(0) { $0 + $1.size } + chosen.reduce(0) { $0 + $1.estimate(level, hevc: hevc) }
         }
     }
 
@@ -185,17 +188,15 @@ public enum Shrink {
             return Item(kind: kind, path: shown, size: size, estimates: est, detail: "\(w)×\(h)")
 
         case .video:
-            let asset = AVURLAsset(url: URL(fileURLWithPath: path))
-            guard let info = blocking({ () async throws -> (Double, CGSize) in
-                let duration = try await asset.load(.duration).seconds
-                guard let track = try await asset.loadTracks(withMediaType: .video).first else { return (duration, .zero) }
-                let (natural, transform) = try await track.load(.naturalSize, .preferredTransform)
-                let r = natural.applying(transform)
-                return (duration, CGSize(width: abs(r.width), height: abs(r.height)))
-            }), info.0 > 0, info.1 != .zero else { return nil }
-            let est = levels.map { clamp($0.videoBitrate * info.0 / 8) }
-            let label = Fmt2.duration(info.0) + " · " + Fmt2.resolution(info.1)
-            return Item(kind: kind, path: shown, size: size, estimates: est, detail: label)
+            guard let info = videoInfo(path), info.duration > 0, info.size != .zero else { return nil }
+            let screen = isScreenRecording((path as NSString).lastPathComponent)
+            func est(_ hevc: Bool) -> [UInt64] {
+                levels.map { clamp(VideoPlan(size: info.size, fps: info.fps, screen: screen, level: $0, hevc: hevc).estimate(duration: info.duration)) }
+            }
+            var label = Fmt2.duration(info.duration) + " · " + Fmt2.resolution(info.size)
+            if info.fps > 30.5 { label += " · \(Int(info.fps.rounded()))fps" }
+            if screen { label += " · 화면 녹화" }
+            return Item(kind: kind, path: shown, size: size, estimates: est(false), detail: label, hevcEstimates: est(true))
 
         case .audio:
             // 무손실(PCM · FLAC · ALAC)만 줄인다. 이미 AAC·MP3인 m4a는 더 줄여도 음질만 나빠진다.
@@ -231,7 +232,7 @@ public enum Shrink {
 
     public typealias Progress = @Sendable (_ fraction: Double, _ name: String) -> Void
 
-    public static func apply(_ report: Report, kinds: Set<Kind>, level: Level, mode: SendPrep.Mode,
+    public static func apply(_ report: Report, kinds: Set<Kind>, level: Level, hevc: Bool = false, mode: SendPrep.Mode,
                              progress: Progress? = nil, cancel: CancelToken? = nil) throws -> Outcome {
         var outcome = Outcome()
         outcome.before = report.totalBytes
@@ -264,7 +265,7 @@ public enum Shrink {
             let tmp = dir + "/.finderie-\(UUID().uuidString)." + outExt
             var made: UInt64?
             do {
-                try shrink(node.path, to: tmp, kind: kind, level: level, progress: report, cancel: cancel)
+                try shrink(node.path, to: tmp, kind: kind, level: level, hevc: hevc, progress: report, cancel: cancel)
                 var st = stat()
                 if lstat(tmp, &st) == 0 { made = UInt64(st.st_size) }
             } catch ZipError.cancelled {
@@ -331,11 +332,15 @@ public enum Shrink {
         }
     }
 
-    static func shrink(_ src: String, to dst: String, kind: Kind, level: Level,
+    static func shrink(_ src: String, to dst: String, kind: Kind, level: Level, hevc: Bool,
                        progress: (Double) -> Void, cancel: CancelToken?) throws {
         switch kind {
         case .photo: try shrinkPhoto(src, to: dst, level: level)
-        case .video: try export(src, to: dst, preset: level.videoPreset, type: .mp4, progress: progress, cancel: cancel)
+        case .video:
+            guard let info = videoInfo(src) else { throw SendPrep.Failure(message: "영상을 읽지 못했어요") }
+            let plan = VideoPlan(size: info.size, fps: info.fps,
+                                 screen: isScreenRecording((src as NSString).lastPathComponent), level: level, hevc: hevc)
+            try encodeVideo(src, to: dst, plan: plan, hevc: hevc, progress: progress, cancel: cancel)
         case .audio: try encodeAAC(src, to: dst, bitrate: level.audioBitrate, progress: progress, cancel: cancel)
         case .pdf: try shrinkPDF(src, to: dst, level: level)
         }
@@ -364,6 +369,11 @@ public enum Shrink {
         switch ext {
         case "png": type = .png
         case "heic", "heif": type = .heic
+        case "avif": type = UTType("public.avif") ?? .jpeg
+        case "webp":
+            // macOS는 WebP를 저장하지 못해서 libwebp로 쓴다 (사진 정보는 담지 않는다)
+            try Convert.writeWebP(image, to: dst, quality: level.photoQuality, lossless: false)
+            return
         default: type = .jpeg
         }
         guard let dest = CGImageDestinationCreateWithURL(URL(fileURLWithPath: dst) as CFURL, type.identifier as CFString, 1, nil) else {
@@ -383,27 +393,6 @@ public enum Shrink {
     }
 
     // MARK: 영상 · 소리
-
-    static func export(_ src: String, to dst: String, preset: String, type: AVFileType,
-                       progress: (Double) -> Void, cancel: CancelToken?) throws {
-        let asset = AVURLAsset(url: URL(fileURLWithPath: src))
-        guard let session = AVAssetExportSession(asset: asset, presetName: preset) else {
-            throw SendPrep.Failure(message: "이 파일은 다시 인코딩할 수 없어요")
-        }
-        session.outputURL = URL(fileURLWithPath: dst)
-        session.outputFileType = type
-        session.shouldOptimizeForNetworkUse = true
-        let done = DispatchSemaphore(value: 0)
-        session.exportAsynchronously { done.signal() }
-        while done.wait(timeout: .now() + 0.25) == .timedOut {
-            progress(Double(session.progress))
-            if cancel?.isCancelled == true { session.cancelExport() }
-        }
-        if cancel?.isCancelled == true { throw ZipError.cancelled }
-        guard session.status == .completed else {
-            throw SendPrep.Failure(message: session.error?.localizedDescription ?? "인코딩하지 못했어요")
-        }
-    }
 
     /// 단계 비트레이트를 채널 수에 맞춘다 (모노는 절반)
     static func audioBitrate(_ level: Level, channels: Int) -> Int {

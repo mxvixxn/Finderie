@@ -17,6 +17,7 @@ public final class ShrinkModel: ObservableObject {
     }
 
     let urls: [URL]
+    let settings: AppSettings
     @Published var phase: Phase = .scanning
     @Published var enabled: Set<Shrink.Kind> = Set(Shrink.Kind.allCases)
     @Published var level: Shrink.Level = .medium
@@ -24,8 +25,9 @@ public final class ShrinkModel: ObservableObject {
     @Published var currentName = ""
     private var cancel = CancelToken()
 
-    init(urls: [URL]) {
+    init(urls: [URL], settings: AppSettings) {
         self.urls = urls
+        self.settings = settings
     }
 
     var title: String {
@@ -58,6 +60,7 @@ public final class ShrinkModel: ObservableObject {
         if mode == .inPlace && !confirmInPlace() { return }
         let kinds = enabled.intersection(report.kinds)
         let level = level
+        let hevc = settings.shrinkHEVC
         cancel = CancelToken()
         let token = cancel
         fraction = 0
@@ -65,7 +68,7 @@ public final class ShrinkModel: ObservableObject {
         phase = .working(report)
         Task.detached(priority: .userInitiated) {
             do {
-                let outcome = try Shrink.apply(report, kinds: kinds, level: level, mode: mode, progress: { f, name in
+                let outcome = try Shrink.apply(report, kinds: kinds, level: level, hevc: hevc, mode: mode, progress: { f, name in
                     Task { @MainActor in
                         self.fraction = f
                         if !name.isEmpty { self.currentName = name }
@@ -113,10 +116,10 @@ extension Shrink.Kind {
         }
     }
 
-    func how(_ level: Shrink.Level) -> String {
+    func how(_ level: Shrink.Level, hevc: Bool = false) -> String {
         switch self {
         case .photo: return "\(level.photoLabel)로 줄여요"
-        case .video: return "\(level.videoLabel) MP4로 다시 만들어요"
+        case .video: return "최대 \(level.videoLabel) \(hevc ? "HEVC" : "H.264") MP4로 다시 만들어요"
         case .pdf: return "안의 이미지를 줄여요"
         case .audio: return "AAC \(level.audioLabel) M4A로 바꿔요"
         }
@@ -194,7 +197,15 @@ struct ShrinkFlow: View {
 struct ShrinkReportView: View {
     @ObservedObject var shrink: ShrinkModel
     @ObservedObject var model: AppModel
+    @ObservedObject var settings: AppSettings
     let report: Shrink.Report
+
+    init(shrink: ShrinkModel, model: AppModel, report: Shrink.Report) {
+        self.shrink = shrink
+        self.model = model
+        self.settings = model.settings
+        self.report = report
+    }
 
     private var chosen: Set<Shrink.Kind> { shrink.enabled.intersection(report.kinds) }
     private var isFolder: Bool {
@@ -230,7 +241,13 @@ struct ShrinkReportView: View {
                 .labelsHidden()
                 Text(shrink.level.caption).font(.callout).foregroundStyle(.secondary)
                 EstimateBar(before: report.totalBytes,
-                            after: report.estimatedTotal(kinds: chosen, level: shrink.level))
+                            after: report.estimatedTotal(kinds: chosen, level: shrink.level, hevc: settings.shrinkHEVC))
+                if report.kinds.contains(.video) {
+                    Toggle("영상을 HEVC로 더 작게", isOn: $settings.shrinkHEVC)
+                        .toggleStyle(.checkbox)
+                        .font(.callout)
+                        .help("같은 화질에 약 40% 더 작아요. 오래된 Windows에서는 안 열릴 수 있어요")
+                }
             }
             .padding(14)
             .card()
@@ -239,7 +256,7 @@ struct ShrinkReportView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(report.kinds.enumerated()), id: \.element) { i, kind in
                         if i > 0 { Divider().padding(.leading, 50) }
-                        KindCard(kind: kind, items: report.items(of: kind), level: shrink.level, isOn: Binding(
+                        KindCard(kind: kind, items: report.items(of: kind), level: shrink.level, hevc: settings.shrinkHEVC, isOn: Binding(
                             get: { shrink.enabled.contains(kind) },
                             set: { on in if on { shrink.enabled.insert(kind) } else { shrink.enabled.remove(kind) } }
                         ))
@@ -318,11 +335,12 @@ struct KindCard: View {
     let kind: Shrink.Kind
     let items: [Shrink.Item]
     let level: Shrink.Level
+    var hevc = false
     @Binding var isOn: Bool
     @State private var expanded = false
 
     private var before: UInt64 { items.reduce(0) { $0 + $1.size } }
-    private var after: UInt64 { items.reduce(0) { $0 + $1.estimate(level) } }
+    private var after: UInt64 { items.reduce(0) { $0 + $1.estimate(level, hevc: hevc) } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -334,7 +352,7 @@ struct KindCard: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(kind.title).font(.headline)
-                    Text("\(kind.how(level)) · 약 \(Fmt.bytes(after))").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    Text("\(kind.how(level, hevc: hevc)) · 약 \(Fmt.bytes(after))").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 4)
                 DisclosureCount(count: items.count, expanded: $expanded)

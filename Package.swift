@@ -26,7 +26,7 @@ let package = Package(
         // 사진 형식 바꾸기 (JPG · PNG · HEIC · WebP · AVIF · TIFF, SVG 읽기)
         .target(name: "ConvertCore", dependencies: ["ZipCore", "CWebP"]),
         // 용량 줄이기 (사진, 영상, PDF, Office 문서, 소리)
-        .target(name: "ShrinkCore", dependencies: ["ZipCore"]),
+        .target(name: "ShrinkCore", dependencies: ["ZipCore", "ConvertCore"]),
         // 앱 화면 (상태 모델 + SwiftUI 뷰). 앱과 화면 확인 도구가 함께 쓴다.
         .target(name: "FinderieUI", dependencies: ["ZipCore", "ShrinkCore", "ConvertCore"]),
         .executableTarget(name: "Finderie", dependencies: ["ZipCore", "FinderieUI"]),

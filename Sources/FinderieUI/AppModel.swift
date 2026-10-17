@@ -55,6 +55,7 @@ public final class AppSettings: ObservableObject {
     @AppStorage("background") public var background = false
     @AppStorage("skipPreview") public var skipPreview = false
     @AppStorage("skipCompressOptions") public var skipCompressOptions = false
+    @AppStorage("shrinkHEVC") public var shrinkHEVC = false
     @AppStorage("convertFormat") public var convertFormat: Convert.Format = .jpg
     @AppStorage("extractDestination") public var extractDestination: ExtractDestination = .besideZip
 
@@ -268,7 +269,7 @@ public final class AppModel: ObservableObject {
 
     func startShrink(_ urls: [URL]) {
         if shrink?.isBusy == true { return }
-        let model = ShrinkModel(urls: urls)
+        let model = ShrinkModel(urls: urls, settings: settings)
         shrink = model
         model.scan()
     }

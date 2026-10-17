@@ -9,7 +9,7 @@ import ConvertCore
 //   finderie-cli list <in.zip>
 //   finderie-cli scan <파일...>
 //   finderie-cli prep [--in-place] [--skip names,junk,csv,heic] <파일...>
-//   finderie-cli shrink [--level 0|1|2] [--in-place] [--dry] <파일...>
+//   finderie-cli shrink [--level 0|1|2] [--hevc] [--in-place] [--dry] <파일...>
 //   finderie-cli convert <jpg|png|heic|webp|avif|tiff> <파일...>
 var args = Array(CommandLine.arguments.dropFirst())
 func fail(_ msg: String) -> Never { FileHandle.standardError.write((msg + "\n").data(using: .utf8)!); exit(1) }
@@ -41,6 +41,7 @@ do {
     var fixes = Set(SendPrep.Fix.allCases)
     var level = Shrink.Level.medium
     var dry = false
+    var hevc = false
     if cmd == "prep" || cmd == "shrink" {
         while let f = args.first, f.hasPrefix("--") {
             args.removeFirst()
@@ -48,6 +49,7 @@ do {
             case "--in-place": mode = .inPlace
             case "--level": level = Shrink.Level(rawValue: Int(args.removeFirst()) ?? 1) ?? .medium
             case "--dry": dry = true
+            case "--hevc": hevc = true
             case "--skip": for s in args.removeFirst().split(separator: ",") { fixes.remove(SendPrep.Fix(rawValue: String(s)) ?? .names) }
             default: fail("unknown flag \(f)")
             }
@@ -83,11 +85,11 @@ do {
         for item in o.items { print("item=\(item.path)") }
     case "shrink" where !args.isEmpty:
         let report = try Shrink.scan(args.map { URL(fileURLWithPath: $0) })
-        print("files=\(report.fileCount) bytes=\(report.totalBytes) estimate=\(report.estimatedTotal(kinds: Set(Shrink.Kind.allCases), level: level))")
-        for i in report.items { print("\(i.kind.rawValue)\t\(i.path)\t\(i.size) → ~\(i.estimate(level))\t\(i.detail)") }
+        print("files=\(report.fileCount) bytes=\(report.totalBytes) estimate=\(report.estimatedTotal(kinds: Set(Shrink.Kind.allCases), level: level, hevc: hevc))")
+        for i in report.items { print("\(i.kind.rawValue)\t\(i.path)\t\(i.size) → ~\(i.estimate(level, hevc: hevc))\t\(i.detail)") }
         if dry { break }
         let start = Date()
-        let o = try Shrink.apply(report, kinds: Set(Shrink.Kind.allCases), level: level, mode: mode)
+        let o = try Shrink.apply(report, kinds: Set(Shrink.Kind.allCases), level: level, hevc: hevc, mode: mode)
         print("before=\(o.before) after=\(o.after) shrunk=\(o.shrunk) kept=\(o.kept) failed=\(o.failed) trashed=\(o.trashed.count) \(String(format: "%.1fs", Date().timeIntervalSince(start)))")
         print("folder=\(o.folder?.path ?? "-")")
     default:

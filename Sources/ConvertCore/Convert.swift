@@ -238,7 +238,7 @@ public enum Convert {
         ["png", "gif", "svg", "bmp"].contains((src as NSString).pathExtension.lowercased())
     }
 
-    static func writeWebP(_ image: CGImage, to dst: String, quality: Double, lossless: Bool) throws {
+    public static func writeWebP(_ image: CGImage, to dst: String, quality: Double, lossless: Bool) throws {
         let w = image.width, h = image.height
         let stride = w * 4
         var pixels = [UInt8](repeating: 0, count: stride * h)
