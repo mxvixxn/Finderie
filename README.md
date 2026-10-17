@@ -38,9 +38,20 @@ macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하�
 5% 넘게 작아지지 않는 파일은 그대로 둔다. **복사본 만들기**는 `용량 줄인 파일` 폴더에, **원본 바꾸기**는 원래 파일을
 휴지통으로 옮긴다 (`Sources/ShrinkCore`).
 
+## 사진 형식 바꾸기
+
+사진을 JPG · PNG · HEIC · WebP · AVIF · TIFF 중 하나로 바꾼다. JPG · PNG · HEIC · WebP · AVIF · TIFF · GIF · BMP · SVG를 읽는다.
+새 파일은 `형식 바꾼 사진` 폴더에 폴더 구조 그대로 만들고 원본은 건드리지 않는다 (`Sources/ConvertCore`).
+
+- 방향은 실제 픽셀에 적용하고, 사진 정보(EXIF·GPS)는 담을 수 있는 형식이면 그대로 둔다
+- JPG로 바꿀 때 투명한 부분은 흰 바탕이 된다. 움직이는 GIF·WebP는 첫 장면만 쓴다
+- SVG는 긴 변이 1024px 이상이 되게 그림으로 그린다
+- macOS는 WebP를 읽기만 하므로 WebP 저장에는 함께 넣은 libwebp를 쓴다. PNG·GIF·SVG·BMP는 무손실, 나머지는 화질 90
+
 ## 압축 기능
 
 - **압축 전 옵션 확인**: 파일을 놓으면 한글 이름 방식 · 속도 · Mac 숨김 파일 빼기 · 저장 위치를 확인하고 압축한다 (설정에서 끌 수 있다)
+
 - **한글 이름 호환**: 압축할 때 이름 인코딩을 고를 수 있다.
   - Windows 호환 · UTF-8 (권장): 완성형(NFC) + UTF-8 표시
   - 구형 Windows 호환 · CP949: CP949 이름 + 원래 이름(Info-ZIP 유니코드 경로 필드)
@@ -54,7 +65,7 @@ macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하�
 
 ## Finder에서 바로 쓰기
 
-파일이나 폴더를 우클릭 → **Windows로 보낼 준비** / **Finderie로 용량 줄이기** / **Finderie로 압축** / **Finderie로 풀기**(ZIP을 골랐을 때).
+파일이나 폴더를 우클릭 → **Finderie ▸** → **Windows로 보낼 준비** / **용량 줄이기** / **사진 형식 바꾸기** / **압축** / **풀기**(ZIP을 골랐을 때).
 압축은 지금 설정(한글 이름 방식, 속도)대로 바로 하고, 풀기는 미리보기 없이 기본 풀 위치에 푼다.
 
 - 메뉴 맨 위에 나오는 항목은 Finder 확장(`Extension/`, 앱 안의 `FinderieExtension.appex`)이 넣는다.
@@ -83,9 +94,12 @@ zsh windows-test/make_shrink_fixture.sh <폴더>     # 사진·영상·PDF·문�
 | `Sources/FinderieUI` | 화면과 상태 모델: 놓는 칸, ZIP 미리보기, 작업 대기열·카드, 최근 기록, 설정 |
 | `Sources/FinderieSnap` | 화면 확인 도구: 실제 작업을 돌려 각 상태를 PNG로 그린다 (`finderie-snap <출력> <작업 폴더>`) |
 | `Sources/FinderieCLI` | 시험용 명령줄 도구 (`finderie-cli zip/unzip/list`) |
+| `Sources/ConvertCore` | 사진 형식 바꾸기 (ImageIO, SVG는 AppKit, WebP 저장은 libwebp) |
+| `Sources/CWebP` | libwebp v1.5.0 인코더 (BSD). 어떤 파일을 넣었는지는 `VERSION.txt` 참고 |
 | `Sources/CLibdeflate` | libdeflate v1.24 (MIT). Finderie용 수정 사항은 `VERSION.txt` 참고 |
 | `windows-test` | Windows 호환성 시험 묶음 (`make_pack.sh` → `serve.py` → VM에서 `run.ps1`) |
 
 ## 라이선스 표기
 
 libdeflate — Copyright 2016 Eric Biggers, Copyright 2024 Google LLC — MIT License (`Sources/CLibdeflate/LICENSE`)
+libwebp — Copyright 2010 Google Inc. — BSD 3-Clause License (`Sources/CWebP/LICENSE`, 특허 허여 `Sources/CWebP/PATENTS`)

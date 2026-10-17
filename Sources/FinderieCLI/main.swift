@@ -1,6 +1,7 @@
 import Foundation
 import ZipCore
 import ShrinkCore
+import ConvertCore
 
 // 테스트용 명령줄 도구
 //   finderie-cli zip [--level fast|normal|best] [--no-store] [--threads N] [--chunk BYTES] [--background] [--io auto|parallel|sequential] <utf8|cp949|mac> <out.zip> <파일...>
@@ -9,6 +10,7 @@ import ShrinkCore
 //   finderie-cli scan <파일...>
 //   finderie-cli prep [--in-place] [--skip names,junk,csv,heic] <파일...>
 //   finderie-cli shrink [--level 0|1|2] [--in-place] [--dry] <파일...>
+//   finderie-cli convert <jpg|png|heic|webp|avif|tiff> <파일...>
 var args = Array(CommandLine.arguments.dropFirst())
 func fail(_ msg: String) -> Never { FileHandle.standardError.write((msg + "\n").data(using: .utf8)!); exit(1) }
 
@@ -51,8 +53,16 @@ do {
             }
         }
     }
-    takeFlags()
+    if cmd != "convert" { takeFlags() }
     switch cmd {
+    case "convert" where args.count >= 2:
+        guard let format = Convert.Format(rawValue: args.removeFirst()) else { fail("unknown format") }
+        let roots = args.map { URL(fileURLWithPath: $0) }
+        let items = try Convert.scan(roots)
+        for i in items { print("\(i.kind)\t\(i.shown)\t\(i.size)") }
+        let o = try Convert.apply(items, roots: roots, to: format)
+        print("made=\(o.made) same=\(o.same) before=\(o.before) after=\(o.after) failed=\(o.failed)")
+        print("folder=\(o.folder?.path ?? "-")")
     case "zip" where args.count >= 3:
         options.nameEncoding = ["utf8": .windowsUTF8, "cp949": .windowsCP949, "mac": .macDefault][args[0]] ?? .windowsUTF8
         let stats = try ZipWriter.compress(args[2...].map { URL(fileURLWithPath: $0) }, to: URL(fileURLWithPath: args[1]), options: options)

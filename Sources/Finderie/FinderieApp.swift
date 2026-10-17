@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch action {
         case .prepare: model.prepareNow(items)
         case .shrink: model.shrinkNow(items)
+        case .convert: model.convertNow(items)
         case .compress: model.compressNow(items)
         case .extract: model.extractNow(items)
         }

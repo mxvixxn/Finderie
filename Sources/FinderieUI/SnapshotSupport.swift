@@ -56,6 +56,16 @@ public enum SnapshotSupport {
         model.settings.tab = prep ? .prep : .zip
     }
 
+    public static func setConvertTab(_ model: AppModel) {
+        model.settings.tab = .convert
+    }
+
+    /// 변환 보고서에서 [바꾸기]
+    public static func runConvert(_ model: AppModel) {
+        guard let convert = model.convert, case .ready(let items) = convert.phase else { return }
+        convert.run(items)
+    }
+
     public static func setShrinkTab(_ model: AppModel) {
         model.settings.tab = .shrink
     }

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import ConvertCore
 import ZipCore
 
 // MARK: - 설정
@@ -32,12 +33,13 @@ public enum ExtractDestination: String, CaseIterable, Identifiable, Sendable {
 /// 앱 설정. 값은 UserDefaults에 저장돼서 다음에 켜도 그대로다.
 /// 창 맨 위 탭
 public enum AppTab: String, CaseIterable, Identifiable, Sendable {
-    case prep, shrink, zip
+    case prep, shrink, convert, zip
     public var id: String { rawValue }
     var title: String {
         switch self {
-        case .prep: return "보내기 준비"
-        case .shrink: return "용량 줄이기"
+        case .prep: return "보내기"
+        case .shrink: return "줄이기"
+        case .convert: return "변환"
         case .zip: return "압축"
         }
     }
@@ -53,6 +55,7 @@ public final class AppSettings: ObservableObject {
     @AppStorage("background") public var background = false
     @AppStorage("skipPreview") public var skipPreview = false
     @AppStorage("skipCompressOptions") public var skipCompressOptions = false
+    @AppStorage("convertFormat") public var convertFormat: Convert.Format = .jpg
     @AppStorage("extractDestination") public var extractDestination: ExtractDestination = .besideZip
 
     public init() {}
@@ -163,6 +166,8 @@ public final class AppModel: ObservableObject {
     @Published var prep: PrepModel?
     /// 용량 줄이기 탭의 진행 상태
     @Published var shrink: ShrinkModel?
+    /// 변환 탭의 진행 상태
+    @Published var convert: ConvertModel?
     @Published var dragInfo: DragInfo?
     @Published var isDropTargeted = false
 
@@ -186,6 +191,7 @@ public final class AppModel: ObservableObject {
         switch settings.tab {
         case .prep: startPrep(urls); return
         case .shrink: startShrink(urls); return
+        case .convert: startConvert(urls); return
         case .zip: break
         }
         let zips = urls.filter { $0.pathExtension.lowercased() == "zip" }
@@ -225,6 +231,7 @@ public final class AppModel: ObservableObject {
         switch settings.tab {
         case .prep: message = "Windows로 보낼 파일이나 폴더를 고르세요"
         case .shrink: message = "용량을 줄일 파일이나 폴더를 고르세요"
+        case .convert: message = "형식을 바꿀 사진이나 폴더를 고르세요"
         case .zip: message = "ZIP을 고르면 풀고, 다른 파일이나 폴더를 고르면 압축해요"
         }
         let urls = Panels.pickItems(message: message)
@@ -245,6 +252,20 @@ public final class AppModel: ObservableObject {
         startShrink(urls)
     }
 
+    /// Finder 우클릭 → "사진 변환"
+    public func convertNow(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        settings.tab = .convert
+        startConvert(urls)
+    }
+
+    func startConvert(_ urls: [URL]) {
+        if convert?.isBusy == true { return }
+        let model = ConvertModel(urls: urls, settings: settings)
+        convert = model
+        model.scan()
+    }
+
     func startShrink(_ urls: [URL]) {
         if shrink?.isBusy == true { return }
         let model = ShrinkModel(urls: urls)
@@ -253,7 +274,7 @@ public final class AppModel: ObservableObject {
     }
 
     /// 지금 탭에서 일이 진행 중이면 탭을 바꾸거나 새 파일을 받지 않는다
-    var isToolBusy: Bool { prep?.isBusy == true || shrink?.isBusy == true }
+    var isToolBusy: Bool { prep?.isBusy == true || shrink?.isBusy == true || convert?.isBusy == true }
 
     func startPrep(_ urls: [URL]) {
         if prep?.isBusy == true { return }

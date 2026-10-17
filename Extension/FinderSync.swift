@@ -25,6 +25,7 @@ final class FinderSync: FIFinderSync {
         let actions = NSMenu(title: "Finderie")
         actions.addItem(withTitle: "Windows로 보낼 준비", action: #selector(prepare(_:)), keyEquivalent: "")
         actions.addItem(withTitle: "용량 줄이기", action: #selector(shrink(_:)), keyEquivalent: "")
+        actions.addItem(withTitle: "사진 형식 바꾸기", action: #selector(convert(_:)), keyEquivalent: "")
         actions.addItem(withTitle: "압축", action: #selector(compress(_:)), keyEquivalent: "")
         if selected.allSatisfy({ $0.pathExtension.lowercased() == "zip" }) {
             actions.addItem(withTitle: "풀기", action: #selector(extract(_:)), keyEquivalent: "")
@@ -48,6 +49,7 @@ final class FinderSync: FIFinderSync {
 
     @objc private func prepare(_ sender: AnyObject?) { send("prepare") }
     @objc private func shrink(_ sender: AnyObject?) { send("shrink") }
+    @objc private func convert(_ sender: AnyObject?) { send("convert") }
     @objc private func compress(_ sender: AnyObject?) { send("compress") }
     @objc private func extract(_ sender: AnyObject?) { send("extract") }
 

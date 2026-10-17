@@ -1,0 +1,1 @@
+libwebp v1.5.0 (a4d7a715337ded4451fec90ff8ce79728e04126c) — src/{dec,dsp,enc,utils,webp}, sharpyuv 의 .c/.h만

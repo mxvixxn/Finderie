@@ -144,6 +144,26 @@ MainActor.assumeIsolated {
         render("s3-shrink-done") { snapWindow(s2) }
         SnapshotSupport.setTab(s2, prep: false)
     }
+    let convertFolder = work.appendingPathComponent("사진 모음")
+    if FileManager.default.fileExists(atPath: convertFolder.path) {
+        // C1. 변환: 기다림
+        let c1 = AppModel(loadsHistory: false)
+        SnapshotSupport.setConvertTab(c1)
+        render("c1-convert-idle") { snapWindow(c1) }
+
+        // C2. 형식 고르기 (실제로 찾는다)
+        let c2 = AppModel(loadsHistory: false)
+        c2.settings.convertFormat = .webp
+        c2.convertNow([convertFolder])
+        waitIdle(c2)
+        render("c2-convert-report") { snapWindow(c2) }
+
+        // C3. 완료 (실제로 바꾼다)
+        SnapshotSupport.runConvert(c2)
+        waitIdle(c2)
+        render("c3-convert-done") { snapWindow(c2) }
+        SnapshotSupport.setTab(c2, prep: false)
+    }
     guard FileManager.default.fileExists(atPath: folder.path) else { return }
 
     // 1. 기다림
