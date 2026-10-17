@@ -13,7 +13,7 @@ struct FinderieApp: App {
                 .onOpenURL { appDelegate.handleLink($0) }
         }
         .windowResizability(.contentSize)
-        .windowToolbarStyle(.unified(showsTitle: true))
+        .windowToolbarStyle(.unified(showsTitle: false))
 
         Settings {
             SettingsView(settings: appDelegate.model.settings)

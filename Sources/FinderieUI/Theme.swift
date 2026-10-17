@@ -2,21 +2,21 @@ import AppKit
 import SwiftUI
 import ZipCore
 
-/// 앱 아이콘과 맞춘 색. 글자 대비가 필요한 곳은 진한 하늘색(primary)을 쓴다.
+/// 화면 색. 강조는 사용자가 시스템 설정에서 고른 강조 색을 따르고, 하늘색은 지퍼 그림에만 쓴다.
 enum Theme {
+    /// 버튼, 진행 막대, 강조 글자
+    static let accent = Color.accentColor
     /// 아이콘의 손잡이 몸통 색
     static let sky = Color(red: 0x2F / 255, green: 0xA6 / 255, blue: 0xF2 / 255)
     /// 아이콘의 손잡이 고리 색
     static let skyLight = Color(red: 0x7C / 255, green: 0xCF / 255, blue: 1)
-    /// 흰 글씨를 올리는 버튼 색 (대비 4.5:1 이상)
-    static let primary = Color(red: 0x0A / 255, green: 0x74 / 255, blue: 0xC2 / 255)
     static let success = Color(red: 0x1B / 255, green: 0x7F / 255, blue: 0x45 / 255)
     static let warning = Color(red: 0xA9 / 255, green: 0x4F / 255, blue: 0x06 / 255)
 
     /// 카드 바탕 (라이트: 흰색, 다크: 짙은 회색)
     static let card = Color(nsColor: .controlBackgroundColor)
     /// 카드 테두리
-    static let hairline = Color.primary.opacity(0.12)
+    static let hairline = Color.primary.opacity(0.08)
 }
 
 /// 앱 아이콘과 같은 지퍼 그림 (위가 진하고 아래로 갈수록 연한 이빨 + 하늘색 손잡이).
@@ -51,22 +51,47 @@ struct ZipperGlyph: View {
     }
 }
 
-/// 카드 모양: 바탕 + 얇은 테두리 + 옅은 그림자
+/// 카드 모양: 바탕 + 얇은 테두리
 struct CardBackground: ViewModifier {
-    var radius: CGFloat = 14
+    var radius: CGFloat = 12
     var border: Color = Theme.hairline
 
     func body(content: Content) -> some View {
         content
             .background(Theme.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(border, lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
     }
 }
 
 extension View {
-    func card(radius: CGFloat = 14, border: Color = Theme.hairline) -> some View {
+    func card(radius: CGFloat = 12, border: Color = Theme.hairline) -> some View {
         modifier(CardBackground(radius: radius, border: border))
+    }
+}
+
+// MARK: - Liquid Glass
+
+/// macOS 26부터는 Liquid Glass, 그 이전에는 비슷한 반투명 재질로 그린다.
+extension View {
+    /// 유리 바탕. tint를 주면 그 색이 은은하게 비치고, interactive면 누를 때 반응한다.
+    @ViewBuilder
+    func glassSurface(in shape: some Shape, tint: Color? = nil, interactive: Bool = false) -> some View {
+        if #available(macOS 26, *) {
+            glassEffect(Glass.regular.tint(tint).interactive(interactive), in: shape)
+        } else {
+            background(.regularMaterial, in: shape)
+                .background(tint ?? .clear, in: shape)
+        }
+    }
+
+    /// 유리 단추. prominent는 강조색이 채워진 주 단추.
+    @ViewBuilder
+    func glassButton(prominent: Bool = false) -> some View {
+        if #available(macOS 26, *) {
+            if prominent { buttonStyle(.glassProminent) } else { buttonStyle(.glass) }
+        } else {
+            if prominent { buttonStyle(.borderedProminent) } else { buttonStyle(.bordered) }
+        }
     }
 }
 
@@ -83,8 +108,8 @@ struct IconButton: View {
                 .font(.system(size: filled ? 10 : 13, weight: filled ? .bold : .medium))
                 .foregroundStyle(.secondary)
                 .frame(width: filled ? 26 : 30, height: filled ? 26 : 30)
-                .background(filled ? Color.primary.opacity(0.07) : .clear, in: Circle())
                 .contentShape(Circle())
+                .modifier(GlassCircle(enabled: filled))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -151,6 +176,19 @@ extension NameEncoding {
         case .windowsUTF8: return "Windows 호환(UTF-8)"
         case .windowsCP949: return "구형 Windows 호환(CP949)"
         case .macDefault: return "Mac 기본 방식"
+        }
+    }
+}
+
+/// 채운 IconButton의 둥근 유리 바탕
+private struct GlassCircle: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.glassSurface(in: Circle(), interactive: true)
+        } else {
+            content
         }
     }
 }

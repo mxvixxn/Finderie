@@ -192,17 +192,9 @@ struct PrepScreen: View {
             PrepFlow(prep: prep, model: model)
         } else {
             ToolDropWell(model: model, targetedSymbol: "wand.and.stars", targetedTitle: "놓으면 검사해요",
-                         title: "Windows로 보낼 파일을 놓으세요",
-                         subtitle: "받는 사람 컴퓨터에서 깨지지 않게 미리 고쳐요") {
+                         title: "Windows로 보낼 파일을 놓으세요") {
                 WandGlyph(size: 64)
             }
-            ChecksCard(title: "이런 걸 검사해요", rows: [
-                ("character.textbox", "한글 이름", "자모가 풀린 이름, 못 쓰는 글자, 겹치는 이름"),
-                ("tablecells", "CSV 파일", "엑셀에서 한글이 깨지지 않게"),
-                ("photo", "HEIC 사진", "어디서나 열리는 JPG로"),
-                ("hand.raised", "개인정보", "사진 위치·기기 정보, 문서 작성자"),
-                ("exclamationmark.triangle", "열 수 없는 파일", "Mac 전용 문서, 바로가기, 너무 긴 경로"),
-            ])
         }
     }
 }
@@ -224,7 +216,7 @@ struct PrepFlow: View {
                 ProgressBar(value: prep.fraction)
                 HStack {
                     Text(prep.currentName.isEmpty ? " " : prep.currentName)
-                        .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        .font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     Spacer()
                     Button("멈추기") { prep.stop() }.controlSize(.small)
                 }
@@ -290,12 +282,17 @@ struct PrepReportView: View {
             VStack(spacing: 10) {
                 if fixes.isEmpty {
                     allGood
-                }
-                ForEach(fixes) { fix in
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(fixes.enumerated()), id: \.element) { i, fix in
+                            if i > 0 { Divider().padding(.leading, 50) }
                     FixCard(fix: fix, issues: report.issues(for: fix), isOn: Binding(
                         get: { prep.enabled.contains(fix) },
                         set: { on in if on { prep.enabled.insert(fix) } else { prep.enabled.remove(fix) } }
                     ))
+                        }
+                    }
+                    .card()
                 }
                 if !report.warnings.isEmpty {
                     WarningCard(issues: report.warnings)
@@ -307,9 +304,6 @@ struct PrepReportView: View {
         .fixedSize(horizontal: false, vertical: true)
 
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("다 하면 ZIP으로 묶기", isOn: $settings.prepMakeZip)
-                .toggleStyle(.checkbox)
-                .font(.system(size: 13))
             if fixes.isEmpty {
                 Button {
                     model.compressNow(prep.urls)
@@ -318,7 +312,7 @@ struct PrepReportView: View {
                 } label: {
                     Label("바로 ZIP으로 묶기", systemImage: "doc.zipper").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).tint(Theme.primary).controlSize(.large)
+                .glassButton(prominent: true).tint(Theme.accent).controlSize(.large)
             } else {
                 HStack(spacing: 8) {
                     Button {
@@ -326,7 +320,7 @@ struct PrepReportView: View {
                     } label: {
                         Text("원본 고치기").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .glassButton()
                     .help("고른 파일의 이름을 직접 바꿔요. 지우는 파일은 휴지통으로 옮겨요")
 
                     Button {
@@ -334,16 +328,17 @@ struct PrepReportView: View {
                     } label: {
                         Text("복사본 만들기").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.primary)
+                    .glassButton(prominent: true)
+                    .tint(Theme.accent)
                     .help("‘Windows로 보낼 파일’ 폴더에 고친 복사본을 만들어요. 원본은 그대로예요")
                 }
                 .controlSize(.large)
                 .disabled(chosen.isEmpty)
-                Text(chosen.isEmpty ? "고칠 항목을 하나 이상 켜 주세요"
-                                    : "복사본은 원본 옆 ‘Windows로 보낼 파일’ 폴더에 만들어요")
-                    .font(.system(size: 11.5)).foregroundStyle(.secondary)
+                if chosen.isEmpty {
+                    Text("고칠 항목을 하나 이상 켜 주세요")
+                    .font(.subheadline).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
         }
     }
@@ -358,14 +353,14 @@ struct PrepReportView: View {
 
     private var allGood: some View {
         HStack(spacing: 12) {
-            Image(systemName: "checkmark")
-                .font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.success)
-                .frame(width: 36, height: 36).background(Theme.success.opacity(0.13), in: Circle())
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title2).foregroundStyle(Theme.success)
+                .frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text("고칠 게 없어요").font(.system(size: 14, weight: .bold))
+                Text("고칠 게 없어요").font(.headline)
                 Text(report.warnings.isEmpty ? "이대로 Windows로 보내도 괜찮아요" : "아래 항목만 확인해 주세요")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(.secondary)
             }
             Spacer()
         }
@@ -396,40 +391,31 @@ struct FixCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Image(systemName: fix.symbol)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isOn ? Theme.primary : .secondary)
-                    .frame(width: 30, height: 30)
-                    .background((isOn ? Theme.sky.opacity(0.14) : Color.primary.opacity(0.06)),
-                                in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(isOn ? Theme.accent : .secondary)
+                    .frame(width: 24, height: 24)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 6) {
-                        Text(fix.title).font(.system(size: 13, weight: .semibold))
-                        Text("\(rows.count)").font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Theme.primary)
-                            .padding(.horizontal, 6).padding(.vertical, 1)
-                            .background(Theme.sky.opacity(0.14), in: Capsule())
-                    }
-                    Text(fix.detail).font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(fix.title).font(.headline)
+                    Text(fix.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 4)
+                DisclosureCount(count: rows.count, expanded: $expanded)
                 Toggle(fix.title, isOn: $isOn).toggleStyle(.switch).labelsHidden().controlSize(.small)
             }
 
-            VStack(alignment: .leading, spacing: 5) {
-                ForEach(Array(rows.prefix(expanded ? rows.count : 3).enumerated()), id: \.offset) { _, row in
-                    IssueRow(path: row.path, after: row.after, reason: row.reasons.joined(separator: " · "))
+            if expanded {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        IssueRow(path: row.path, after: row.after, reason: row.reasons.joined(separator: " · "))
+                    }
                 }
-                if rows.count > 3 {
-                    Button(expanded ? "접기" : "모두 보기 (\(rows.count))") { expanded.toggle() }
-                        .buttonStyle(.link).font(.system(size: 12))
-                }
+                .padding(.leading, 36)
+                .opacity(isOn ? 1 : 0.5)
             }
-            .padding(.leading, 42)
-            .opacity(isOn ? 1 : 0.5)
         }
-        .padding(14)
-        .card(radius: 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 }
 
@@ -446,11 +432,11 @@ struct IssueRow: View {
                 Text(name).lineLimit(1).truncationMode(.middle)
                 if let after, after != name {
                     Image(systemName: "arrow.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
-                    Text(after).foregroundStyle(Theme.primary).lineLimit(1).truncationMode(.middle)
+                    Text(after).foregroundStyle(Theme.accent).lineLimit(1).truncationMode(.middle)
                 }
             }
-            .font(.system(size: 12, weight: .medium))
-            Text(reason).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
+            .font(.callout.weight(.medium))
+            Text(reason).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
         }
         .help(path)
     }
@@ -464,14 +450,13 @@ struct WarningCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(Theme.warning)
-                    .frame(width: 30, height: 30)
-                    .background(Theme.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .frame(width: 24, height: 24)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Windows에서 열리지 않을 수 있어요").font(.system(size: 13, weight: .semibold))
-                    Text("자동으로 고칠 수 없어서 알려만 드려요").font(.system(size: 11.5)).foregroundStyle(.secondary)
+                    Text("Windows에서 열리지 않을 수 있어요").font(.headline)
+                    Text("자동으로 고칠 수 없어서 알려만 드려요").font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -481,7 +466,7 @@ struct WarningCard: View {
                 }
                 if issues.count > 3 {
                     Button(expanded ? "접기" : "모두 보기 (\(issues.count))") { expanded.toggle() }
-                        .buttonStyle(.link).font(.system(size: 12))
+                        .buttonStyle(.link).font(.callout)
                 }
             }
             .padding(.leading, 42)
@@ -515,18 +500,18 @@ struct PrepDoneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.success)
-                    .frame(width: 36, height: 36).background(Theme.success.opacity(0.13), in: Circle())
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2).foregroundStyle(Theme.success)
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Windows로 보낼 준비가 끝났어요").font(.system(size: 14, weight: .bold))
+                    Text("Windows로 보낼 준비가 끝났어요").font(.headline)
                     Text(lines.isEmpty ? "바꾼 것은 없어요" : lines.joined(separator: " · "))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.callout).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if !outcome.trashed.isEmpty {
                         Text("바꾸기 전 파일 \(outcome.trashed.count)개는 휴지통에 있어요")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.callout).foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 4)
@@ -541,21 +526,21 @@ struct PrepDoneCard: View {
                     } label: {
                         Label("Finder에서 보기", systemImage: "magnifyingglass").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.primary)
+                    .glassButton(prominent: true)
+                    .tint(Theme.accent)
                     .controlSize(.large)
 
                     ShareLink(item: result) {
                         Label("공유…", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .glassButton()
                     .controlSize(.large)
                 }
             }
 
             if !report.warnings.isEmpty {
                 Label("확인할 파일 \(report.warnings.count)개는 그대로 두었어요", systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 12)).foregroundStyle(Theme.warning)
+                    .font(.callout).foregroundStyle(Theme.warning)
             }
         }
         .padding(16)

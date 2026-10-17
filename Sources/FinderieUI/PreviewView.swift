@@ -167,22 +167,18 @@ struct PreviewView: View {
             if preview.loading {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("목록을 읽고 있어요…").font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text("목록을 읽고 있어요…").font(.body).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else if let error = preview.errorText {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 13))
+                    .font(.body)
                     .foregroundStyle(Theme.warning)
                     .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
             } else {
                 banner
                 fileList
             }
-            Toggle(isOn: Binding(get: { model.settings.skipPreview }, set: { model.settings.skipPreview = $0 })) {
-                Text("다음부터는 미리보기 없이 바로 풀기").font(.system(size: 12.5))
-            }
-            .toggleStyle(.checkbox)
             footer
         }
     }
@@ -191,17 +187,16 @@ struct PreviewView: View {
         HStack(spacing: 12) {
             Image(systemName: "doc.zipper")
                 .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(Theme.primary)
+                .foregroundStyle(Theme.accent)
                 .frame(width: 44, height: 44)
-                .background(Theme.sky.opacity(0.14), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(preview.zip.lastPathComponent)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.title3.weight(.semibold))
                     .lineLimit(1).truncationMode(.middle)
                 Text(preview.loading ? Fmt.bytes(preview.archiveSize)
                      : "\(preview.fileCount)개 파일 · \(Fmt.bytes(preview.archiveSize)) · 풀면 \(Fmt.bytes(preview.totalSize))")
-                    .font(.system(size: 12))
+                    .font(.callout)
                     .foregroundStyle(.secondary)
             }
         }
@@ -220,18 +215,13 @@ struct PreviewView: View {
 
     private var banner: some View {
         let t = bannerText
-        let tint = t.warn ? Theme.warning : Theme.primary
-        return HStack(alignment: .top, spacing: 10) {
-            Image(systemName: t.warn ? "exclamationmark.triangle" : "checkmark.circle")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(tint)
-                .padding(.top, 1)
+        let tint = t.warn ? Theme.warning : Theme.accent
+        return HStack(spacing: 8) {
+            Image(systemName: t.warn ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(t.warn ? Theme.warning : Theme.success)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(t.title).font(.system(size: 13, weight: .semibold))
-                Text(t.detail).font(.system(size: 12)).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(t.title).foregroundStyle(.secondary)
+                .help(t.detail)
             Spacer(minLength: 4)
             Menu {
                 Picker("이름 인코딩", selection: Binding(get: { preview.decoding }, set: { preview.setDecoding($0) })) {
@@ -243,7 +233,7 @@ struct PreviewView: View {
                     Text(preview.decoding == .auto ? "자동" : preview.decoding.title)
                     Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
                 }
-                .font(.system(size: 12, weight: .semibold))
+                .font(.callout.weight(.semibold))
                 .foregroundStyle(tint)
             }
             .menuStyle(.button)
@@ -252,10 +242,8 @@ struct PreviewView: View {
             .fixedSize()
             .help("파일 이름을 읽을 인코딩")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(tint.opacity(0.3), lineWidth: 0.5))
+        .font(.callout)
+        .padding(.horizontal, 2)
     }
 
     private var fileList: some View {
@@ -266,7 +254,7 @@ struct PreviewView: View {
                 }
                 if preview.hiddenCount > 0 {
                     Text("외 \(preview.hiddenCount)개")
-                        .font(.system(size: 12))
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                         .padding(.leading, 14)
                         .frame(height: 28)
@@ -275,12 +263,12 @@ struct PreviewView: View {
             .padding(.vertical, 4)
         }
         .frame(height: min(CGFloat(preview.rows.count + (preview.hiddenCount > 0 ? 1 : 0)) * 30 + 8, 270))
-        .card(radius: 12)
+        .card()
     }
 
     private var footer: some View {
         HStack(spacing: 8) {
-            Text("풀 위치").font(.system(size: 12.5)).foregroundStyle(.secondary)
+            Text("풀 위치").font(.callout).foregroundStyle(.secondary)
             Menu {
                 ForEach(ExtractDestination.allCases) { d in
                     Button(d.title) { preview.destinationChoice = .preset(d) }
@@ -290,17 +278,18 @@ struct PreviewView: View {
                     if let url = Panels.pickFolder(prompt: "여기에 풀기") { preview.destinationChoice = .custom(url) }
                 }
             } label: {
-                Text(preview.destinationTitle).font(.system(size: 12.5))
+                Text(preview.destinationTitle).font(.callout)
             }
             .fixedSize()
             Spacer()
             Button("취소") { model.preview = nil }
                 .keyboardShortcut(.cancelAction)
+                .glassButton()
                 .controlSize(.large)
             Button("풀기") { model.extractFromPreview(preview) }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.primary)
+                .glassButton(prominent: true)
+                .tint(Theme.accent)
                 .controlSize(.large)
                 .disabled(preview.loading || preview.errorText != nil)
         }
@@ -314,11 +303,11 @@ struct PreviewRowView: View {
         HStack(spacing: 8) {
             icon
             Text(row.name)
-                .font(.system(size: 13, weight: row.kind == .folder ? .semibold : .regular))
+                .font(.body.weight(row.kind == .folder ? .semibold : .regular))
                 .lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 8)
             Text(row.kind == .folder ? "\(row.childCount)개" : Fmt.bytes(row.size))
-                .font(.system(size: 12))
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
         }

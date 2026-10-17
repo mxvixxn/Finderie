@@ -33,6 +33,10 @@ public struct SettingsView: View {
                 }
             }
 
+            Section("보내기 준비") {
+                Toggle("다 하면 ZIP으로 묶기", isOn: $settings.prepMakeZip)
+            }
+
             Section("공통") {
                 Toggle("Mac 전용 숨김 파일 빼기 (.DS_Store, ._파일, __MACOSX)", isOn: $settings.excludeMacFiles)
                 Toggle("백그라운드 모드", isOn: $settings.background)

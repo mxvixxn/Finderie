@@ -11,11 +11,11 @@ struct ActiveSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("진행 중 · \(jobs.count)개").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                Text("진행 중 · \(jobs.count)개").font(.callout.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
                 Button("모두 취소") { model.cancelAll() }
                     .buttonStyle(.link)
-                    .font(.system(size: 12))
+                    .font(.callout)
             }
             .padding(.horizontal, 2)
             ForEach(jobs) { job in
@@ -34,10 +34,9 @@ struct JobProgressCard: View {
     var body: some View {
         if job.phase == .queued {
             HStack(spacing: 12) {
-                badge(color: Color.primary.opacity(0.07), fg: .secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(job.displayName) \(verb)").font(.system(size: 13.5, weight: .semibold)).lineLimit(1).truncationMode(.middle)
-                    Text("대기 중").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("\(job.displayName) \(verb)").font(.headline).lineLimit(1).truncationMode(.middle)
+                    Text("대기 중").font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
                 IconButton(systemName: "xmark", label: "이 작업 취소", filled: true) { model.cancel(job) }
@@ -47,12 +46,11 @@ struct JobProgressCard: View {
         } else {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
-                    badge(color: Theme.sky, fg: .white)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(job.displayName) \(job.kind == .compress ? "압축 중" : "푸는 중")")
-                            .font(.system(size: 13.5, weight: .semibold)).lineLimit(1).truncationMode(.middle)
+                            .font(.headline).lineLimit(1).truncationMode(.middle)
                         Text(job.currentName.isEmpty ? "준비 중…" : job.currentName)
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.callout).foregroundStyle(.secondary)
                             .lineLimit(1).truncationMode(.middle)
                     }
                     Spacer(minLength: 4)
@@ -62,9 +60,9 @@ struct JobProgressCard: View {
                     .accessibilityLabel("\(job.displayName) \(verb) 진행률")
                     .accessibilityValue("\(Int(job.fraction * 100))%")
                 HStack {
-                    Text(detailLine).font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
+                    Text(detailLine).font(.callout).foregroundStyle(.secondary).monospacedDigit()
                     Spacer()
-                    Text("\(Int(job.fraction * 100))%").font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                    Text("\(Int(job.fraction * 100))%").font(.callout.weight(.semibold)).monospacedDigit()
                 }
             }
             .padding(14)
@@ -80,14 +78,6 @@ struct JobProgressCard: View {
         return parts.joined(separator: " · ")
     }
 
-    private func badge(color: Color, fg: Color) -> some View {
-        Image(systemName: job.kind == .compress ? "arrow.down.to.line" : "arrow.up.to.line")
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(fg)
-            .frame(width: 36, height: 36)
-            .background(color, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .accessibilityHidden(true)
-    }
 }
 
 /// 얇은 진행 막대 (6pt)
@@ -98,7 +88,7 @@ struct ProgressBar: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.primary.opacity(0.09))
-                Capsule().fill(Theme.sky).frame(width: max(6, geo.size.width * min(max(value, 0), 1)))
+                Capsule().fill(Theme.accent).frame(width: max(6, geo.size.width * min(max(value, 0), 1)))
             }
         }
         .frame(height: 6)
@@ -116,11 +106,11 @@ struct FinishedSection: View {
         VStack(alignment: .leading, spacing: 10) {
             if jobs.count > 1 {
                 HStack {
-                    Text("끝난 작업 · \(jobs.count)개").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                    Text("끝난 작업 · \(jobs.count)개").font(.callout.weight(.semibold)).foregroundStyle(.secondary)
                     Spacer()
                     Button("모두 지우기") { model.clearFinished() }
                         .buttonStyle(.link)
-                        .font(.system(size: 12))
+                        .font(.callout)
                 }
                 .padding(.horizontal, 2)
             }
@@ -142,15 +132,14 @@ struct DoneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .bold))
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
                     .foregroundStyle(Theme.success)
-                    .frame(width: 36, height: 36)
-                    .background(Theme.success.opacity(0.13), in: Circle())
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(job.kind == .compress ? "압축 완료" : "풀기 완료").font(.system(size: 14, weight: .bold))
-                    Text(job.summary).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(job.kind == .compress ? "압축 완료" : "풀기 완료").font(.headline)
+                    Text(job.summary).font(.callout).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
@@ -165,14 +154,14 @@ struct DoneCard: View {
                     } label: {
                         Label("Finder에서 보기", systemImage: "magnifyingglass").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.primary)
+                    .glassButton(prominent: true)
+                    .tint(Theme.accent)
                     .controlSize(.large)
 
                     ShareLink(item: url) {
                         Label("공유…", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .glassButton()
                     .controlSize(.large)
                 }
             }
@@ -200,12 +189,11 @@ struct ResultChip: View {
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .shadow(color: .black.opacity(0.12), radius: 1.5, y: 1)
             VStack(alignment: .leading, spacing: 2) {
-                Text(url.lastPathComponent).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.middle)
-                Text("끌어서 메일이나 메신저에 바로 넣을 수 있어요").font(.system(size: 11.5)).foregroundStyle(.secondary)
+                Text(url.lastPathComponent).font(.headline).lineLimit(1).truncationMode(.middle)
             }
             Spacer(minLength: 4)
             Image(systemName: "line.3.horizontal")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.headline)
                 .foregroundStyle(.tertiary)
                 .accessibilityHidden(true)
         }
@@ -229,23 +217,22 @@ struct ErrorCard: View {
         let f = job.failure
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 15, weight: .semibold))
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
                     .foregroundStyle(Theme.warning)
-                    .frame(width: 36, height: 36)
-                    .background(Theme.warning.opacity(0.12), in: Circle())
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(f?.title ?? "작업을 마치지 못했어요").font(.system(size: 14, weight: .bold))
+                    Text(f?.title ?? "작업을 마치지 못했어요").font(.headline)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(f?.reason ?? "").font(.system(size: 12.5))
+                    Text(f?.reason ?? "").font(.callout)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("이렇게 해 보세요").font(.system(size: 12.5, weight: .semibold))
-                Text(f?.hint ?? "").font(.system(size: 12.5)).fixedSize(horizontal: false, vertical: true)
-                Text(f?.cleanupNote ?? "").font(.system(size: 12.5)).foregroundStyle(.secondary)
+                Text("이렇게 해 보세요").font(.callout.weight(.semibold))
+                Text(f?.hint ?? "").font(.callout).fixedSize(horizontal: false, vertical: true)
+                Text(f?.cleanupNote ?? "").font(.callout).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -255,15 +242,16 @@ struct ErrorCard: View {
                 Spacer()
                 if f?.retryable ?? true {
                     Button("닫기") { model.dismiss(job) }
+                        .glassButton()
                         .controlSize(.large)
                     Button("다시 시도") { model.retry(job) }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Theme.primary)
+                        .glassButton(prominent: true)
+                        .tint(Theme.accent)
                         .controlSize(.large)
                 } else {
                     Button("닫기") { model.dismiss(job) }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Theme.primary)
+                        .glassButton(prominent: true)
+                        .tint(Theme.accent)
                         .controlSize(.large)
                 }
             }
@@ -280,17 +268,16 @@ struct CompactFinishedRow: View {
     var body: some View {
         let failed = job.phase == .failed
         HStack(spacing: 12) {
-            Image(systemName: failed ? "exclamationmark.triangle" : "checkmark")
-                .font(.system(size: 12, weight: .bold))
+            Image(systemName: failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                .font(.title3)
                 .foregroundStyle(failed ? Theme.warning : Theme.success)
-                .frame(width: 30, height: 30)
-                .background((failed ? Theme.warning : Theme.success).opacity(0.12), in: Circle())
+                .frame(width: 24, height: 24)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(failed ? (job.failure?.title ?? "실패") : "\(job.displayName) \(job.kind == .compress ? "압축" : "풀기") 완료")
-                    .font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.middle)
+                    .font(.headline).lineLimit(1).truncationMode(.middle)
                 Text(failed ? (job.failure?.reason ?? "") : job.summary)
-                    .font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 4)
             if let url = job.resultURL {

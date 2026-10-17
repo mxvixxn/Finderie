@@ -60,6 +60,30 @@ func render(_ name: String, width: CGFloat? = nil, _ makeView: () -> some View) 
     }
 }
 
+/// 탭은 창의 제목 막대에 있어서, 스냅샷에서는 제목 막대 모양을 흉내 내 위에 붙인다.
+@MainActor
+func snapWindow(_ model: AppModel) -> some View {
+    VStack(spacing: 0) {
+        HStack {
+            Spacer()
+            TabSwitcher(model: model)
+            Spacer()
+        }
+        .overlay(alignment: .trailing) {
+            HStack(spacing: 14) {
+                Image(systemName: "clock")
+                Image(systemName: "gearshape")
+            }
+            .foregroundStyle(.secondary)
+            .padding(.trailing, 16)
+        }
+        .frame(height: 52)
+        Divider()
+        MainView(model: model).padding(.top, 12)
+    }
+    .frame(width: 460)
+}
+
 MainActor.assumeIsolated {
     let app = NSApplication.shared
     app.setActivationPolicy(.prohibited)
@@ -79,24 +103,24 @@ MainActor.assumeIsolated {
         // P1. 보내기 준비: 기다림
         let p1 = AppModel(loadsHistory: false)
         SnapshotSupport.setTab(p1, prep: true)
-        render("p1-prep-idle") { MainView(model: p1) }
+        render("p1-prep-idle") { snapWindow(p1) }
 
         // P2. 끌고 들어옴
         SnapshotSupport.setDragging(p1, isExtract: false, summary: "폴더 1개 · 파일 15개 · 8.7 KB")
-        render("p2-prep-dragging") { MainView(model: p1) }
+        render("p2-prep-dragging") { snapWindow(p1) }
 
         // P3. 보고서 (실제로 검사한다)
         let p3 = AppModel(loadsHistory: false)
         p3.prepareNow([prepFolder])
         waitIdle(p3)
         print(SnapshotSupport.describePrep(p3))
-        render("p3-prep-report") { MainView(model: p3) }
+        render("p3-prep-report") { snapWindow(p3) }
 
         // P4. 완료 (실제로 복사본을 만든다)
         SnapshotSupport.runPrepCopy(p3)
         waitIdle(p3)
         print(SnapshotSupport.describePrep(p3))
-        render("p4-prep-done") { MainView(model: p3) }
+        render("p4-prep-done") { snapWindow(p3) }
         SnapshotSupport.setTab(p3, prep: false)
     }
     let shrinkFolder = work.appendingPathComponent("홍보 자료")
@@ -104,20 +128,20 @@ MainActor.assumeIsolated {
         // S1. 용량 줄이기: 기다림
         let s1 = AppModel(loadsHistory: false)
         SnapshotSupport.setShrinkTab(s1)
-        render("s1-shrink-idle") { MainView(model: s1) }
+        render("s1-shrink-idle") { snapWindow(s1) }
 
         // S2. 보고서 (실제로 크기를 잰다)
         let s2 = AppModel(loadsHistory: false)
         s2.shrinkNow([shrinkFolder])
         waitIdle(s2)
         print(SnapshotSupport.describeShrink(s2))
-        render("s2-shrink-report") { MainView(model: s2) }
+        render("s2-shrink-report") { snapWindow(s2) }
 
         // S3. 완료 (실제로 줄인다)
         SnapshotSupport.runShrinkCopy(s2)
         waitIdle(s2, timeout: 180)
         print(SnapshotSupport.describeShrink(s2))
-        render("s3-shrink-done") { MainView(model: s2) }
+        render("s3-shrink-done") { snapWindow(s2) }
         SnapshotSupport.setTab(s2, prep: false)
     }
     guard FileManager.default.fileExists(atPath: folder.path) else { return }
@@ -128,22 +152,22 @@ MainActor.assumeIsolated {
                                path: windowsZip.path, minutesAgo: 3)
     SnapshotSupport.addHistory(idle, name: "회의 자료_최종", isCompress: false, detail: "풀기 · 12개 파일 · 한글 이름 복원(CP949)",
                                path: folder.path, minutesAgo: 60 * 26)
-    render("1-idle") { MainView(model: idle) }
+    render("1-idle") { snapWindow(idle) }
 
     // 2. 끌고 들어옴
     SnapshotSupport.setDragging(idle, isExtract: false, summary: "폴더 1개 · 파일 236개 · 1.9 GB")
-    render("2-dragging") { MainView(model: idle) }
+    render("2-dragging") { snapWindow(idle) }
 
     // 3. 미리보기 (실제 Windows CP949 ZIP을 읽는다)
     let preview = AppModel(loadsHistory: false)
     SnapshotSupport.showPreview(preview, zip: windowsZip)
     waitIdle(preview)
-    render("3-preview") { MainView(model: preview) }
+    render("3-preview") { snapWindow(preview) }
 
     // 4. 작업 중 (예시 값)
     let working = AppModel(loadsHistory: false)
     SnapshotSupport.addRunningExample(working, folder: folder, zip: windowsZip)
-    render("4-working") { MainView(model: working) }
+    render("4-working") { snapWindow(working) }
 
     // 5. 완료 (실제로 풀고 압축한다)
     let done = AppModel(loadsHistory: false)
@@ -152,7 +176,7 @@ MainActor.assumeIsolated {
     waitIdle(done)
     done.accept([folder])
     waitIdle(done)
-    render("5-done") { MainView(model: done) }
+    render("5-done") { snapWindow(done) }
 
     // 6. 오류 (실제로 암호 ZIP과 손상된 ZIP을 풀어 본다)
     let failed = AppModel(loadsHistory: false)
@@ -160,7 +184,7 @@ MainActor.assumeIsolated {
     waitIdle(failed)
     failed.accept([brokenZip])
     waitIdle(failed)
-    render("6-error") { MainView(model: failed) }
+    render("6-error") { snapWindow(failed) }
     done.settings.skipPreview = false
 
     // 설정 창

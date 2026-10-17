@@ -21,24 +21,20 @@ final class FinderSync: FIFinderSync {
         let selected = FIFinderSyncController.default().selectedItemURLs() ?? []
         guard !selected.isEmpty else { return nil }
 
-        let menu = NSMenu(title: "Finderie")
-        let prepare = NSMenuItem(title: "Windows로 보낼 준비", action: #selector(prepare(_:)), keyEquivalent: "")
-        prepare.image = Self.appIcon
-        menu.addItem(prepare)
-
-        let shrink = NSMenuItem(title: "Finderie로 용량 줄이기", action: #selector(shrink(_:)), keyEquivalent: "")
-        shrink.image = Self.appIcon
-        menu.addItem(shrink)
-
-        let compress = NSMenuItem(title: "Finderie로 압축", action: #selector(compress(_:)), keyEquivalent: "")
-        compress.image = Self.appIcon
-        menu.addItem(compress)
-
+        // Finder 메뉴에는 'Finderie' 한 줄만 두고, 할 일은 그 안의 하위 메뉴에 모은다
+        let actions = NSMenu(title: "Finderie")
+        actions.addItem(withTitle: "Windows로 보낼 준비", action: #selector(prepare(_:)), keyEquivalent: "")
+        actions.addItem(withTitle: "용량 줄이기", action: #selector(shrink(_:)), keyEquivalent: "")
+        actions.addItem(withTitle: "압축", action: #selector(compress(_:)), keyEquivalent: "")
         if selected.allSatisfy({ $0.pathExtension.lowercased() == "zip" }) {
-            let extract = NSMenuItem(title: "Finderie로 풀기", action: #selector(extract(_:)), keyEquivalent: "")
-            extract.image = Self.appIcon
-            menu.addItem(extract)
+            actions.addItem(withTitle: "풀기", action: #selector(extract(_:)), keyEquivalent: "")
         }
+
+        let root = NSMenuItem(title: "Finderie", action: nil, keyEquivalent: "")
+        root.image = Self.appIcon
+        root.submenu = actions
+        let menu = NSMenu(title: "")
+        menu.addItem(root)
         return menu
     }
 

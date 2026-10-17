@@ -8,7 +8,6 @@ struct ToolDropWell<Glyph: View>: View {
     let targetedSymbol: String
     let targetedTitle: String
     let title: String
-    let subtitle: String
     @ViewBuilder let glyph: () -> Glyph
 
     private var targeted: Bool { model.isDropTargeted }
@@ -17,68 +16,25 @@ struct ToolDropWell<Glyph: View>: View {
         VStack(spacing: 10) {
             if targeted {
                 Image(systemName: targetedSymbol)
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 72, height: 72)
-                    .background(Theme.sky, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .shadow(color: Theme.sky.opacity(0.35), radius: 10, y: 6)
+                    .font(.system(size: 40, weight: .regular))
+                    .foregroundStyle(Theme.accent)
+                    .frame(height: 64)
                     .accessibilityHidden(true)
-                Text(targetedTitle).font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.primary)
-                Text(model.dragInfo?.summary ?? " ").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(targetedTitle).font(.title2.weight(.semibold)).foregroundStyle(Theme.accent)
+                Text(model.dragInfo?.summary ?? " ").font(.body).foregroundStyle(.secondary)
             } else {
                 glyph()
-                Text(title).font(.system(size: 15, weight: .semibold))
-                Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(title).font(.title3.weight(.semibold))
                 Button("파일 선택…") { model.chooseFiles() }
-                    .controlSize(.regular)
-                    .padding(.top, 4)
+                    .buttonStyle(.link)
             }
         }
         .frame(maxWidth: .infinity)
         .frame(height: 232)
-        .background(targeted ? Theme.sky.opacity(0.13) : Theme.sky.opacity(0.05),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(targeted ? Theme.sky : Color.secondary.opacity(0.35),
-                              style: StrokeStyle(lineWidth: targeted ? 2 : 1.5, dash: targeted ? [] : [6, 4]))
-        )
-        .shadow(color: targeted ? Theme.sky.opacity(0.25) : .clear, radius: 10)
+        .glassSurface(in: RoundedRectangle(cornerRadius: 16, style: .continuous),
+                    tint: targeted ? Theme.accent.opacity(0.35) : nil, interactive: true)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("파일을 놓는 곳")
-    }
-}
-
-/// 무엇을 하는지 미리 알려 주는 목록 카드
-struct ChecksCard: View {
-    let title: String
-    let rows: [(String, String, String)]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary).padding(.horizontal, 2)
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
-                    HStack(spacing: 12) {
-                        Image(systemName: row.0)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Theme.primary)
-                            .frame(width: 28, height: 28)
-                            .background(Theme.sky.opacity(0.12), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(row.1).font(.system(size: 13, weight: .medium))
-                            Text(row.2).font(.system(size: 11.5)).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .frame(height: 48)
-                    if i < rows.count - 1 { Divider().padding(.leading, 52) }
-                }
-            }
-            .card(radius: 12)
-        }
     }
 }
 
@@ -92,14 +48,13 @@ struct ToolHeader<Trailing: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: isFolder ? "folder" : "doc")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Theme.primary)
-                .frame(width: 36, height: 36)
-                .background(Theme.sky.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .font(.title3)
+                .foregroundStyle(Theme.accent)
+                .frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(1).truncationMode(.middle)
-                Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(title).font(.headline).lineLimit(1).truncationMode(.middle)
+                Text(subtitle).font(.callout).foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
             trailing()
@@ -115,19 +70,43 @@ struct ToolFailureCard<Actions: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "exclamationmark")
-                    .font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.warning)
-                    .frame(width: 36, height: 36).background(Theme.warning.opacity(0.13), in: Circle())
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2).foregroundStyle(Theme.warning)
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.system(size: 14, weight: .bold))
-                    Text(message).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(title).font(.headline)
+                    Text(message).font(.callout).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            HStack { actions() }.controlSize(.large)
+            HStack { actions() }.glassButton().controlSize(.large)
         }
         .padding(16)
         .card()
+    }
+}
+
+/// 묶음 줄 오른쪽의 "8 ›": 눌러서 파일 목록을 펼친다
+struct DisclosureCount: View {
+    let count: Int
+    @Binding var expanded: Bool
+
+    var body: some View {
+        Button {
+            expanded.toggle()
+        } label: {
+            HStack(spacing: 4) {
+                Text("\(count)")
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(expanded ? "파일 목록 접기" : "파일 \(count)개 보기")
     }
 }

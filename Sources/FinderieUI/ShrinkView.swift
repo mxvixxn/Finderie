@@ -144,17 +144,9 @@ struct ShrinkScreen: View {
         } else {
             ToolDropWell(model: model, targetedSymbol: "arrow.down.right.and.arrow.up.left",
                          targetedTitle: "놓으면 크기를 재요",
-                         title: "용량을 줄일 파일을 놓으세요",
-                         subtitle: "메일이나 메신저 첨부 한도에 맞게 줄여요") {
+                         title: "용량을 줄일 파일을 놓으세요") {
                 ShrinkGlyph(size: 64)
             }
-            ChecksCard(title: "이런 걸 줄여요", rows: [
-                ("photo", "사진", "JPG · HEIC · PNG, TIFF는 JPG로"),
-                ("film", "영상", "MOV · MP4를 1080p / 720p / 540p로"),
-                ("doc.richtext", "PDF", "스캔본처럼 이미지가 많은 PDF"),
-                ("doc.text.image", "Office 문서", "사진이 많은 PPT · Word · Excel"),
-                ("waveform", "소리", "WAV · AIFF 녹음을 M4A로"),
-            ])
         }
     }
 }
@@ -176,7 +168,7 @@ struct ShrinkFlow: View {
                 ProgressBar(value: shrink.fraction)
                 HStack {
                     Text(shrink.currentName.isEmpty ? " " : shrink.currentName)
-                        .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        .font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     Spacer()
                     Button("멈추기") { shrink.stop() }.controlSize(.small)
                 }
@@ -219,14 +211,14 @@ struct ShrinkReportView: View {
 
         if report.items.isEmpty {
             HStack(spacing: 12) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.success)
-                    .frame(width: 36, height: 36).background(Theme.success.opacity(0.13), in: Circle())
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2).foregroundStyle(Theme.success)
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("줄일 파일이 없어요").font(.system(size: 14, weight: .bold))
+                    Text("줄일 파일이 없어요").font(.headline)
                     Text("사진, 영상, PDF, Office 문서, 녹음 파일을 넣어 보세요")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -239,22 +231,24 @@ struct ShrinkReportView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                Text(shrink.level.caption).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(shrink.level.caption).font(.callout).foregroundStyle(.secondary)
                 EstimateBar(before: report.totalBytes,
                             after: report.estimatedTotal(kinds: chosen, level: shrink.level))
             }
             .padding(14)
-            .card(radius: 12)
+            .card()
 
             ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(report.kinds) { kind in
+                VStack(spacing: 0) {
+                    ForEach(Array(report.kinds.enumerated()), id: \.element) { i, kind in
+                        if i > 0 { Divider().padding(.leading, 50) }
                         KindCard(kind: kind, items: report.items(of: kind), level: shrink.level, isOn: Binding(
                             get: { shrink.enabled.contains(kind) },
                             set: { on in if on { shrink.enabled.insert(kind) } else { shrink.enabled.remove(kind) } }
                         ))
                     }
                 }
+                .card()
                 .padding(.bottom, 2)
             }
             .frame(maxHeight: 300)
@@ -267,7 +261,7 @@ struct ShrinkReportView: View {
                     } label: {
                         Text("원본 바꾸기").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .glassButton()
                     .help("줄인 파일로 바꾸고, 원래 파일은 휴지통으로 옮겨요")
 
                     Button {
@@ -275,16 +269,17 @@ struct ShrinkReportView: View {
                     } label: {
                         Text("복사본 만들기").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.primary)
+                    .glassButton(prominent: true)
+                    .tint(Theme.accent)
                     .help("‘용량 줄인 파일’ 폴더에 줄인 복사본을 만들어요. 원본은 그대로예요")
                 }
                 .controlSize(.large)
                 .disabled(chosen.isEmpty)
-                Text(chosen.isEmpty ? "줄일 종류를 하나 이상 켜 주세요"
-                                    : "별로 안 작아지는 파일은 원래대로 둬요 · 예상 크기는 대략이에요")
-                    .font(.system(size: 11.5)).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                if chosen.isEmpty {
+                    Text("줄일 종류를 하나 이상 켜 주세요")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
         }
     }
@@ -300,12 +295,12 @@ struct EstimateBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(Fmt.bytes(before)).font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(Fmt.bytes(before)).font(.body).foregroundStyle(.secondary)
                 Image(systemName: "arrow.right").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary)
-                Text("약 \(Fmt.bytes(after))").font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.primary)
+                Text("약 \(Fmt.bytes(after))").font(.title2.weight(.semibold)).foregroundStyle(Theme.accent)
                 Spacer()
                 if ratio < 0.99 {
-                    Text("\(Int(((1 - ratio) * 100).rounded()))% 줄어요").font(.system(size: 12, weight: .semibold))
+                    Text("\(Int(((1 - ratio) * 100).rounded()))% 줄어요").font(.callout.weight(.semibold))
                         .foregroundStyle(Theme.success)
                 }
             }
@@ -336,51 +331,40 @@ struct KindCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Image(systemName: kind.symbol)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isOn ? Theme.primary : .secondary)
-                    .frame(width: 30, height: 30)
-                    .background(isOn ? Theme.sky.opacity(0.14) : Color.primary.opacity(0.06),
-                                in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(isOn ? Theme.accent : .secondary)
+                    .frame(width: 24, height: 24)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 6) {
-                        Text(kind.title).font(.system(size: 13, weight: .semibold))
-                        Text("\(items.count)").font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Theme.primary)
-                            .padding(.horizontal, 6).padding(.vertical, 1)
-                            .background(Theme.sky.opacity(0.14), in: Capsule())
-                        Spacer(minLength: 4)
-                        Text("\(Fmt.bytes(before)) → 약 \(Fmt.bytes(after))")
-                            .font(.system(size: 11.5, weight: .medium)).foregroundStyle(.secondary)
-                    }
-                    Text(kind.how(level)).font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(kind.title).font(.headline)
+                    Text("\(kind.how(level)) · 약 \(Fmt.bytes(after))").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
+                Spacer(minLength: 4)
+                DisclosureCount(count: items.count, expanded: $expanded)
                 Toggle(kind.title, isOn: $isOn).toggleStyle(.switch).labelsHidden().controlSize(.small)
             }
 
-            VStack(alignment: .leading, spacing: 5) {
-                ForEach(Array(items.prefix(expanded ? items.count : 3).enumerated()), id: \.offset) { _, item in
+            if expanded {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(spacing: 6) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text((item.path as NSString).lastPathComponent)
-                                .font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle)
-                            Text(item.detail).font(.system(size: 11)).foregroundStyle(.secondary)
+                                .font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                            Text(item.detail).font(.subheadline).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 4)
-                        Text(Fmt.bytes(item.size)).font(.system(size: 11)).foregroundStyle(.secondary)
+                        Text(Fmt.bytes(item.size)).font(.subheadline).foregroundStyle(.secondary)
                     }
                     .help(item.path)
+                    }
                 }
-                if items.count > 3 {
-                    Button(expanded ? "접기" : "모두 보기 (\(items.count))") { expanded.toggle() }
-                        .buttonStyle(.link).font(.system(size: 12))
-                }
+                .padding(.leading, 36)
+                .opacity(isOn ? 1 : 0.5)
             }
-            .padding(.leading, 42)
-            .opacity(isOn ? 1 : 0.5)
         }
-        .padding(14)
-        .card(radius: 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 }
 
@@ -401,21 +385,21 @@ struct ShrinkDoneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.success)
-                    .frame(width: 36, height: 36).background(Theme.success.opacity(0.13), in: Circle())
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2).foregroundStyle(Theme.success)
+                    .frame(width: 28, height: 28)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(outcome.shrunk > 0 ? "용량을 줄였어요" : "줄일 수 있는 게 없었어요").font(.system(size: 14, weight: .bold))
+                    Text(outcome.shrunk > 0 ? "용량을 줄였어요" : "줄일 수 있는 게 없었어요").font(.headline)
                     Text("\(Fmt.bytes(outcome.before)) → \(Fmt.bytes(outcome.after))" + (saved > 0 ? " · \(saved)% 줄었어요" : ""))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.callout).foregroundStyle(.secondary)
                     if outcome.kept > 0 {
                         Text("더 작아지지 않는 파일 \(outcome.kept)개는 그대로 뒀어요")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.callout).foregroundStyle(.secondary)
                     }
                     if !outcome.trashed.isEmpty {
                         Text("원래 파일 \(outcome.trashed.count)개는 휴지통에 있어요")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.callout).foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 4)
@@ -430,14 +414,14 @@ struct ShrinkDoneCard: View {
                     } label: {
                         Label("Finder에서 보기", systemImage: "magnifyingglass").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.primary)
+                    .glassButton(prominent: true)
+                    .tint(Theme.accent)
                     .controlSize(.large)
 
                     ShareLink(item: result) {
                         Label("공유…", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .glassButton()
                     .controlSize(.large)
                 }
             }
@@ -445,9 +429,9 @@ struct ShrinkDoneCard: View {
             if !outcome.failed.isEmpty {
                 VStack(alignment: .leading, spacing: 3) {
                     Label("줄이지 못한 파일 \(outcome.failed.count)개 (원래대로 담았어요)", systemImage: "exclamationmark.triangle")
-                        .font(.system(size: 12)).foregroundStyle(Theme.warning)
+                        .font(.callout).foregroundStyle(Theme.warning)
                     ForEach(outcome.failed.prefix(3), id: \.self) { line in
-                        Text(line).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        Text(line).font(.subheadline).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     }
                 }
             }
