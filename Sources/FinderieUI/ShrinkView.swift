@@ -85,7 +85,7 @@ public final class ShrinkModel: ObservableObject {
     private func confirmInPlace() -> Bool {
         let alert = NSAlert()
         alert.messageText = "원본을 줄인 파일로 바꿀까요?"
-        alert.informativeText = "원래 파일은 휴지통으로 옮겨요. 영상은 MP4, TIFF·BMP는 JPG, WAV·AIFF는 M4A로 바뀌어요."
+        alert.informativeText = "원래 파일은 휴지통으로 옮겨요. 영상은 MP4, TIFF·BMP는 JPG, 무손실 소리는 M4A로 바뀌어요."
         alert.addButton(withTitle: "원본 바꾸기")
         alert.addButton(withTitle: "취소")
         return alert.runModal() == .alertFirstButtonReturn
@@ -100,7 +100,6 @@ extension Shrink.Kind {
         case .photo: return "사진"
         case .video: return "영상"
         case .pdf: return "PDF"
-        case .document: return "Office 문서"
         case .audio: return "소리"
         }
     }
@@ -110,7 +109,6 @@ extension Shrink.Kind {
         case .photo: return "photo"
         case .video: return "film"
         case .pdf: return "doc.richtext"
-        case .document: return "doc.text.image"
         case .audio: return "waveform"
         }
     }
@@ -120,8 +118,7 @@ extension Shrink.Kind {
         case .photo: return "\(level.photoLabel)로 줄여요"
         case .video: return "\(level.videoLabel) MP4로 다시 만들어요"
         case .pdf: return "안의 이미지를 줄여요"
-        case .document: return "docx·pptx·xlsx 안의 사진을 줄여요"
-        case .audio: return "WAV·AIFF를 M4A로 바꿔요"
+        case .audio: return "AAC \(level.audioLabel) M4A로 바꿔요"
         }
     }
 }
@@ -217,7 +214,7 @@ struct ShrinkReportView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("줄일 파일이 없어요").font(.headline)
-                    Text("사진, 영상, PDF, Office 문서, 녹음 파일을 넣어 보세요")
+                    Text("사진, 영상, PDF, 무손실 음원(WAV·FLAC·ALAC 등)을 넣어 보세요")
                         .font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer()

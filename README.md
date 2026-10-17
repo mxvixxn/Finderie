@@ -32,8 +32,7 @@ macOS의 Foundation 파일 API는 새 이름을 자모로 풀어(NFD) 저장하�
 | 사진 (JPG·HEIC·PNG·TIFF·BMP) | 긴 변 3840 / 2560 / 1600px, 화질 낮추기. TIFF·BMP는 JPG로. 사진 정보 유지 |
 | 영상 (MOV·MP4·M4V) | H.264 MP4 1080p / 720p / 540p로 다시 인코딩 |
 | PDF | 안의 이미지 해상도·화질 낮추기 (미리보기의 '파일 크기 줄이기'와 같은 Quartz 필터) |
-| Office 문서 (docx·pptx·xlsx) | 풀어서 `media` 폴더의 사진만 줄이고 다시 묶기 |
-| 소리 (WAV·AIFF) | M4A(AAC)로 |
+| 무손실 소리 (WAV·AIFF·CAF·FLAC·ALAC) | AAC 256 / 192 / 128kbps M4A로. 48kHz 넘는 고해상도는 48kHz로, 곡 정보·표지는 그대로. 이미 AAC인 m4a는 그대로 |
 
 5% 넘게 작아지지 않는 파일은 그대로 둔다. **복사본 만들기**는 `용량 줄인 파일` 폴더에, **원본 바꾸기**는 원래 파일을
 휴지통으로 옮긴다 (`Sources/ShrinkCore`).

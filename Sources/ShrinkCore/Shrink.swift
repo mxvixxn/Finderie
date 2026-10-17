@@ -6,7 +6,7 @@ import Quartz
 import UniformTypeIdentifiers
 import ZipCore
 
-/// 용량 줄이기: 사진, 영상, PDF, Office 문서, 소리를 보내기 좋은 크기로 줄인다.
+/// 용량 줄이기: 사진, 영상, PDF, 소리를 보내기 좋은 크기로 줄인다.
 ///
 /// 1. scan으로 줄일 수 있는 파일을 찾고 단계별로 결과 크기를 예상한다.
 /// 2. apply로 복사본을 만들거나 원본을 바꾼다. 별로 안 작아지는 파일은 그대로 둔다.
@@ -28,13 +28,15 @@ public enum Shrink {
         /// 영상 프리셋의 대략적인 비트레이트 (영상 + 소리, bps)
         var videoBitrate: Double { [10_500_000, 5_500_000, 3_000_000][rawValue] }
         public var videoLabel: String { ["1080p", "720p", "540p"][rawValue] }
-        var documentFactor: Double { [0.8, 0.6, 0.45][rawValue] }
+        /// 소리 AAC 비트레이트 (스테레오 기준)
+        var audioBitrate: Int { [256_000, 192_000, 128_000][rawValue] }
+        public var audioLabel: String { "\(audioBitrate / 1000)kbps" }
         var pdfFactor: Double { [0.6, 0.35, 0.2][rawValue] }
         public var photoLabel: String { "긴 변 \(photoEdge)px" }
     }
 
     public enum Kind: String, CaseIterable, Identifiable, Sendable {
-        case photo, video, pdf, document, audio
+        case photo, video, pdf, audio
         public var id: String { rawValue }
 
         static func of(_ name: String) -> Kind? {
@@ -42,8 +44,7 @@ public enum Shrink {
             case "jpg", "jpeg", "heic", "heif", "png", "tif", "tiff", "bmp": return .photo
             case "mov", "mp4", "m4v": return .video
             case "pdf": return .pdf
-            case "docx", "pptx", "xlsx": return .document
-            case "wav", "aif", "aiff": return .audio
+            case "wav", "aif", "aiff", "aifc", "caf", "flac", "m4a": return .audio
             default: return nil
             }
         }
@@ -197,10 +198,24 @@ public enum Shrink {
             return Item(kind: kind, path: shown, size: size, estimates: est, detail: label)
 
         case .audio:
+            // 무손실(PCM · FLAC · ALAC)만 줄인다. 이미 AAC·MP3인 m4a는 더 줄여도 음질만 나빠진다.
             let asset = AVURLAsset(url: URL(fileURLWithPath: path))
-            guard let duration = blocking({ try await asset.load(.duration).seconds }), duration > 0 else { return nil }
-            let est = clamp(256_000 * duration / 8)
-            return Item(kind: kind, path: shown, size: size, estimates: [est, est, est], detail: Fmt2.duration(duration))
+            guard let info = blocking({ () async throws -> (Double, FourCharCode, Int) in
+                let duration = try await asset.load(.duration).seconds
+                guard let track = try await asset.loadTracks(withMediaType: .audio).first,
+                      let format = try await track.load(.formatDescriptions).first else { return (duration, 0, 0) }
+                let channels = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee.mChannelsPerFrame ?? 2
+                return (duration, CMFormatDescriptionGetMediaSubType(format), Int(channels))
+            }), info.0 > 0 else { return nil }
+            let codec: String
+            switch info.1 {
+            case kAudioFormatLinearPCM: codec = ["aif", "aiff", "aifc"].contains((path as NSString).pathExtension.lowercased()) ? "AIFF" : "무손실"
+            case kAudioFormatFLAC: codec = "FLAC"
+            case kAudioFormatAppleLossless: codec = "ALAC"
+            default: return nil
+            }
+            let est = levels.map { clamp(Double(audioBitrate($0, channels: info.2)) * info.0 / 8 + 20_000) }
+            return Item(kind: kind, path: shown, size: size, estimates: est, detail: Fmt2.duration(info.0) + " · " + codec)
 
         case .pdf:
             guard let doc = PDFDocument(url: URL(fileURLWithPath: path)), !doc.isLocked else { return nil }
@@ -209,10 +224,6 @@ public enum Shrink {
             return Item(kind: kind, path: shown, size: size, estimates: levels.map { clamp(Double(size) * $0.pdfFactor) },
                         detail: "\(doc.pageCount)쪽")
 
-        case .document:
-            if size < 1_000_000 { return nil }
-            return Item(kind: kind, path: shown, size: size, estimates: levels.map { clamp(Double(size) * $0.documentFactor) },
-                        detail: "안의 사진을 줄여요")
         }
     }
 
@@ -316,7 +327,7 @@ public enum Shrink {
         case .photo: return ["tif", "tiff", "bmp"].contains(ext) ? "jpg" : ext
         case .video: return "mp4"
         case .audio: return "m4a"
-        case .pdf, .document: return ext
+        case .pdf: return ext
         }
     }
 
@@ -325,9 +336,8 @@ public enum Shrink {
         switch kind {
         case .photo: try shrinkPhoto(src, to: dst, level: level)
         case .video: try export(src, to: dst, preset: level.videoPreset, type: .mp4, progress: progress, cancel: cancel)
-        case .audio: try export(src, to: dst, preset: AVAssetExportPresetAppleM4A, type: .m4a, progress: progress, cancel: cancel)
+        case .audio: try encodeAAC(src, to: dst, bitrate: level.audioBitrate, progress: progress, cancel: cancel)
         case .pdf: try shrinkPDF(src, to: dst, level: level)
-        case .document: try shrinkDocument(src, to: dst, level: level, cancel: cancel)
         }
     }
 
@@ -395,6 +405,79 @@ public enum Shrink {
         }
     }
 
+    /// 단계 비트레이트를 채널 수에 맞춘다 (모노는 절반)
+    static func audioBitrate(_ level: Level, channels: Int) -> Int {
+        channels <= 1 ? level.audioBitrate / 2 : level.audioBitrate
+    }
+
+    /// 무손실 소리를 AAC(m4a)로. 48kHz 넘는 고해상도는 48kHz로, 3채널 이상은 스테레오로 낮춘다.
+    /// 곡 정보(제목·가수·앨범·표지)는 그대로 옮긴다.
+    static func encodeAAC(_ src: String, to dst: String, bitrate: Int,
+                          progress: (Double) -> Void, cancel: CancelToken?) throws {
+        let asset = AVURLAsset(url: URL(fileURLWithPath: src))
+        guard let (track, duration, metadata, rate, channels) = blocking({ () async throws -> (AVAssetTrack, Double, [AVMetadataItem], Double, Int)? in
+            guard let track = try await asset.loadTracks(withMediaType: .audio).first,
+                  let format = try await track.load(.formatDescriptions).first,
+                  let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee else { return nil }
+            return (track, try await asset.load(.duration).seconds, try await asset.load(.metadata),
+                    asbd.mSampleRate, Int(asbd.mChannelsPerFrame))
+        }) ?? nil else {
+            throw SendPrep.Failure(message: "소리를 읽지 못했어요")
+        }
+        let outRate = rate > 48_000 ? 48_000 : (rate >= 44_100 ? rate : 44_100)
+        let outChannels = min(max(channels, 1), 2)
+        var pcm: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: outRate,
+            AVNumberOfChannelsKey: outChannels,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false,
+        ]
+        var layout = AudioChannelLayout()
+        layout.mChannelLayoutTag = outChannels == 1 ? kAudioChannelLayoutTag_Mono : kAudioChannelLayoutTag_Stereo
+        let layoutData = Data(bytes: &layout, count: MemoryLayout<AudioChannelLayout>.size)
+        if channels > 2 { pcm[AVChannelLayoutKey] = layoutData }
+
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: pcm)
+        reader.add(output)
+        let writer = try AVAssetWriter(outputURL: URL(fileURLWithPath: dst), fileType: .m4a)
+        writer.metadata = metadata
+        let input = AVAssetWriterInput(mediaType: .audio, outputSettings: [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: outRate,
+            AVNumberOfChannelsKey: outChannels,
+            AVChannelLayoutKey: layoutData,
+            AVEncoderBitRateKey: outChannels == 1 ? bitrate / 2 : bitrate,
+        ])
+        input.expectsMediaDataInRealTime = false
+        writer.add(input)
+        guard reader.startReading(), writer.startWriting() else {
+            throw SendPrep.Failure(message: "소리를 인코딩하지 못했어요")
+        }
+        writer.startSession(atSourceTime: .zero)
+        while true {
+            if cancel?.isCancelled == true {
+                reader.cancelReading()
+                writer.cancelWriting()
+                throw ZipError.cancelled
+            }
+            guard input.isReadyForMoreMediaData else { usleep(2_000); continue }
+            guard let buffer = output.copyNextSampleBuffer() else { break }
+            if !input.append(buffer) { break }
+            if duration > 0 { progress(min(1, CMSampleBufferGetPresentationTimeStamp(buffer).seconds / duration)) }
+        }
+        input.markAsFinished()
+        let done = DispatchSemaphore(value: 0)
+        writer.finishWriting { done.signal() }
+        done.wait()
+        guard reader.status == .completed, writer.status == .completed else {
+            throw SendPrep.Failure(message: writer.error?.localizedDescription ?? reader.error?.localizedDescription ?? "소리를 인코딩하지 못했어요")
+        }
+    }
+
     // MARK: PDF
 
     static func shrinkPDF(_ src: String, to dst: String, level: Level) throws {
@@ -423,53 +506,6 @@ public enum Shrink {
 
     // MARK: Office 문서
 
-    /// docx·pptx·xlsx는 ZIP이다. 풀어서 안의 사진(media 폴더)만 줄이고 다시 묶는다.
-    static func shrinkDocument(_ src: String, to dst: String, level: Level, cancel: CancelToken?) throws {
-        let fm = FileManager.default
-        let work = NSTemporaryDirectory() + "finderie-doc-\(UUID().uuidString)"
-        try POSIX.mkdir(work)
-        defer { try? fm.removeItem(atPath: work) }
-        try run("/usr/bin/ditto", ["-x", "-k", src, work])
-
-        var changed = 0
-        let enumerator = fm.enumerator(atPath: work)
-        while let rel = enumerator?.nextObject() as? String {
-            if cancel?.isCancelled == true { throw ZipError.cancelled }
-            let parts = rel.split(separator: "/")
-            guard parts.count >= 2, parts[parts.count - 2] == "media" else { continue }
-            let ext = (rel as NSString).pathExtension.lowercased()
-            guard ["jpg", "jpeg", "png"].contains(ext) else { continue }
-            let path = work + "/" + rel
-            let tmp = (path as NSString).deletingLastPathComponent + "/.shrink-\(UUID().uuidString).\(ext)"
-            do {
-                try shrinkPhoto(path, to: tmp, level: level)
-                let before = (try? fm.attributesOfItem(atPath: path)[.size] as? UInt64) ?? 0
-                let after = (try? fm.attributesOfItem(atPath: tmp)[.size] as? UInt64) ?? .max
-                if after < before {
-                    try POSIX.rename(tmp, path)
-                    changed += 1
-                } else {
-                    unlink(tmp)
-                }
-            } catch {
-                unlink(tmp)
-            }
-        }
-        guard changed > 0 else { throw SendPrep.Failure(message: "줄일 사진이 없어요") }
-        // 내용물을 맨 위에 두고 묶는다 (--keepParent 없이). Mac 정보 파일은 넣지 않는다.
-        try run("/usr/bin/ditto", ["-c", "-k", "--norsrc", "--noextattr", "--noqtn", "--noacl", work, dst])
-    }
-
-    private static func run(_ tool: String, _ args: [String]) throws {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: tool)
-        p.arguments = args
-        p.standardOutput = FileHandle.nullDevice
-        p.standardError = FileHandle.nullDevice
-        try p.run()
-        p.waitUntilExit()
-        guard p.terminationStatus == 0 else { throw SendPrep.Failure(message: "문서를 다시 묶지 못했어요") }
-    }
 
     // MARK: 도움
 
