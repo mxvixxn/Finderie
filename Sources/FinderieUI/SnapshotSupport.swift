@@ -27,6 +27,12 @@ public enum SnapshotSupport {
         model.jobs = [running, queued]
     }
 
+    /// 압축 전 옵션 카드
+    public static func showCompressDraft(_ model: AppModel, urls: [URL]) {
+        model.settings.tab = .zip
+        model.accept(urls)
+    }
+
     public static func showPreview(_ model: AppModel, zip: URL) {
         model.showPreview(zip)
     }
@@ -43,6 +49,7 @@ public enum SnapshotSupport {
     /// 아직 진행 중인 일이 있는지 (작업, 미리보기 불러오기, 보내기 준비)
     public static func isBusy(_ model: AppModel) -> Bool {
         model.jobs.contains(where: \.isActive) || model.preview?.loading == true || model.isToolBusy
+            || (model.compressDraft != nil && model.compressDraft?.counts == nil)
     }
 
     public static func setTab(_ model: AppModel, prep: Bool) {

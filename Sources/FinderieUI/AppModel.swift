@@ -52,6 +52,7 @@ public final class AppSettings: ObservableObject {
     @AppStorage("storeCompressedFiles") public var storeCompressedFiles = true
     @AppStorage("background") public var background = false
     @AppStorage("skipPreview") public var skipPreview = false
+    @AppStorage("skipCompressOptions") public var skipCompressOptions = false
     @AppStorage("extractDestination") public var extractDestination: ExtractDestination = .besideZip
 
     public init() {}
@@ -156,6 +157,8 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var jobs: [Job] = []
     @Published var history: [HistoryItem] = []
     @Published var preview: PreviewModel?
+    /// 압축 전에 옵션을 확인하는 카드 (nil이면 없음)
+    @Published var compressDraft: CompressDraft?
     /// 보내기 준비 탭의 진행 상태 (nil이면 파일을 기다린다)
     @Published var prep: PrepModel?
     /// 용량 줄이기 탭의 진행 상태
@@ -201,6 +204,12 @@ public final class AppModel: ObservableObject {
                             target: dir ?? settings.extractDestination.directory(for: zip)))
             }
         } else {
+            if !chooseLocation && !settings.skipCompressOptions {
+                let draft = CompressDraft(urls: urls)
+                compressDraft = draft
+                draft.measure(excludeMacFiles: settings.excludeMacFiles)
+                return
+            }
             var output = ZipWriter.suggestedOutputURL(for: urls)
             if chooseLocation {
                 guard let picked = Panels.pickSaveURL(suggested: output) else { return }
@@ -281,6 +290,12 @@ public final class AppModel: ObservableObject {
         }
         enqueue(Job(kind: .extract, inputs: [p.zip], target: dir, decoding: p.decoding))
         preview = nil
+    }
+
+    /// 옵션 카드에서 [압축]
+    func compressFromDraft(_ draft: CompressDraft) {
+        enqueue(Job(kind: .compress, inputs: draft.urls, target: draft.output))
+        compressDraft = nil
     }
 
     // MARK: 대기열

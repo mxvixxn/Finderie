@@ -21,6 +21,8 @@ public struct MainView: View {
                 ShrinkScreen(model: model)
             } else if let preview = model.preview {
                 PreviewView(preview: preview, model: model)
+            } else if let draft = model.compressDraft {
+                CompressConfirmView(draft: draft, model: model)
             } else if model.jobs.isEmpty {
                 DropWell(model: model, size: .large)
             } else {
@@ -148,7 +150,7 @@ struct FileDropDelegate: DropDelegate {
         switch model.settings.tab {
         case .prep: free = model.prep?.isBusy != true
         case .shrink: free = model.shrink?.isBusy != true
-        case .zip: free = model.preview == nil
+        case .zip: free = model.preview == nil && model.compressDraft == nil
         }
         return free && info.hasItemsConforming(to: [.fileURL])
     }

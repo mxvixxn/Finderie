@@ -158,6 +158,13 @@ MainActor.assumeIsolated {
     SnapshotSupport.setDragging(idle, isExtract: false, summary: "폴더 1개 · 파일 236개 · 1.9 GB")
     render("2-dragging") { snapWindow(idle) }
 
+    // 2b. 압축 전 옵션 카드
+    let draft = AppModel(loadsHistory: false)
+    draft.settings.skipCompressOptions = false
+    SnapshotSupport.showCompressDraft(draft, urls: [folder])
+    waitIdle(draft)
+    render("2b-compress-options") { snapWindow(draft) }
+
     // 3. 미리보기 (실제 Windows CP949 ZIP을 읽는다)
     let preview = AppModel(loadsHistory: false)
     SnapshotSupport.showPreview(preview, zip: windowsZip)
@@ -172,6 +179,7 @@ MainActor.assumeIsolated {
     // 5. 완료 (실제로 풀고 압축한다)
     let done = AppModel(loadsHistory: false)
     done.settings.skipPreview = true
+    done.settings.skipCompressOptions = true
     done.accept([windowsZip])
     waitIdle(done)
     done.accept([folder])
@@ -186,6 +194,7 @@ MainActor.assumeIsolated {
     waitIdle(failed)
     render("6-error") { snapWindow(failed) }
     done.settings.skipPreview = false
+    done.settings.skipCompressOptions = false
 
     // 설정 창
     render("7-settings") { SettingsView(settings: AppSettings()) }

@@ -23,6 +23,8 @@ public struct SettingsView: View {
                     ForEach(CompressionLevel.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("사진 · 영상 · ZIP처럼 이미 압축된 파일은 그대로 담기", isOn: $settings.storeCompressedFiles)
+                Toggle("압축 전에 옵션 보여 주기", isOn: Binding(get: { !settings.skipCompressOptions },
+                                                              set: { settings.skipCompressOptions = !$0 }))
             }
 
             Section("풀기") {
