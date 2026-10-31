@@ -18,6 +18,14 @@ files = {
 for name, data in files.items():
     with open(os.path.join(k, *[nfd(p) for p in name.split('/')]), 'w') as f: f.write(data)
 open(os.path.join(k, '.DS_Store'), 'w').write('junk')
+# Windows에서 못 쓰는 이름 (압축할 때 "Windows로 보낼 준비"와 같은 규칙으로 고쳐져야 한다)
+# Mac 기본 디스크는 대소문자를 가리지 않아 "Report.txt"/"report.txt"는 못 만든다. 고친 뒤 겹치는 경우로 대신 시험한다.
+w = os.path.join(root, nfd('윈도우 금지 이름'))
+for name in ['CON.txt', 'nul', '메모.', '끝에 공백 ', '질문?.txt', '일정:초안.txt', '일정-초안.txt',
+             '<꺾쇠> "따옴표" *별*.txt', '끝이 점인 폴더./안쪽 파일.txt', 'AUX/안쪽 파일.txt']:
+    path = os.path.join(w, *[nfd(p) for p in name.split('/')])
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f: f.write(name + '\n')
 random.seed(5)
 words = ['요청', '처리', '완료', '사용자', '파일', '압축', '오류없음', '서버', '응답']
 with open(os.path.join(root, nfd('큰 로그 파일.log')), 'w') as f:

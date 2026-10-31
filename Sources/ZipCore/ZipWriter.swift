@@ -4,7 +4,7 @@ import Foundation
 public enum ZipWriter {
     private struct Source {
         let url: URL
-        let name: String // 압축 파일 안의 경로. 폴더는 "/"로 끝남
+        var name: String // 압축 파일 안의 경로. 폴더는 "/"로 끝남
         let isDirectory: Bool
         let size: UInt64
         let modified: Date
@@ -94,8 +94,12 @@ public enum ZipWriter {
         report: ProgressThrottle,
         cancel: CancelToken?
     ) throws -> ZipStats {
-        let sources = try collect(items, options: options)
+        var sources = try collect(items, options: options)
         guard !sources.isEmpty else { throw ZipError.nothingToCompress }
+        if options.nameEncoding != .macDefault {
+            let names = windowsNames(sources)
+            for i in sources.indices { sources[i].name = names[i] }
+        }
 
         let totalBytes = max(sources.reduce(UInt64(0)) { $0 + $1.size }, 1)
         var doneBytes: UInt64 = 0
@@ -379,6 +383,50 @@ public enum ZipWriter {
         return result
     }
 
+    // MARK: - Windows용 이름
+
+    /// 경로의 각 부분을 "Windows로 보낼 준비"와 같은 규칙으로 고친다 (금지 문자, 끝의 점·공백, 예약 이름).
+    /// Windows는 대소문자를 가리지 않아서 한 폴더 안에서 이름이 겹치면 " (2)"를 붙인다. 바뀌지 않는 이름이 먼저 자리를 잡는다.
+    private static func windowsNames(_ sources: [Source]) -> [String] {
+        struct Entry { let index: Int; let leaf: String; let fixed: String }
+        var groups: [String: [Entry]] = [:] // 원래 부모 폴더 경로 → 그 안의 항목 ("" = 맨 위)
+        var order: [String] = []
+        for (i, src) in sources.enumerated() {
+            let path = src.isDirectory ? String(src.name.dropLast()) : src.name
+            let slash = path.lastIndex(of: "/")
+            let parent = slash.map { String(path[..<$0]) } ?? ""
+            let leaf = slash.map { String(path[path.index(after: $0)...]) } ?? path
+            if groups[parent] == nil { order.append(parent) }
+            groups[parent, default: []].append(Entry(index: i, leaf: leaf, fixed: SendPrep.fixName(leaf, convertHEIC: false).name))
+        }
+
+        // 폴더는 안의 항목보다 먼저 나오므로, 부모 폴더의 고친 경로는 늘 먼저 정해져 있다
+        var renamedDirs: [String: String] = ["": ""]
+        var names = [String](repeating: "", count: sources.count)
+        for parent in order {
+            let base = renamedDirs[parent] ?? parent
+            let entries = groups[parent] ?? []
+            var taken = Set<String>()
+            for e in entries.filter({ $0.fixed == $0.leaf }) + entries.filter({ $0.fixed != $0.leaf }) {
+                let isDir = sources[e.index].isDirectory
+                let ext = (e.fixed as NSString).pathExtension
+                var candidate = e.fixed
+                var n = 2
+                while taken.contains(candidate.lowercased()) {
+                    candidate = isDir || ext.isEmpty
+                        ? "\(e.fixed) (\(n))"
+                        : "\((e.fixed as NSString).deletingPathExtension) (\(n)).\(ext)"
+                    n += 1
+                }
+                taken.insert(candidate.lowercased())
+                let full = base.isEmpty ? candidate : base + "/" + candidate
+                if isDir { renamedDirs[parent.isEmpty ? e.leaf : parent + "/" + e.leaf] = full }
+                names[e.index] = isDir ? full + "/" : full
+            }
+        }
+        return names
+    }
+
     // MARK: - 파일 이름 인코딩
 
     struct EncodedName {
@@ -387,9 +435,6 @@ public enum ZipWriter {
         let extra: Data
     }
 
-    /// Windows에서 파일 이름으로 쓸 수 없는 문자.
-    private static let windowsForbidden = Set("\\:*?\"<>|")
-
     static func encodeName(_ path: String, as encoding: NameEncoding) -> EncodedName {
         switch encoding {
         case .macDefault:
@@ -397,11 +442,11 @@ public enum ZipWriter {
             return EncodedName(bytes: Array(s.utf8), utf8: false, extra: Data())
 
         case .windowsUTF8:
-            let s = windowsSafe(path)
+            let s = path.precomposedStringWithCanonicalMapping
             return EncodedName(bytes: Array(s.utf8), utf8: true, extra: Data())
 
         case .windowsCP949:
-            let s = windowsSafe(path)
+            let s = path.precomposedStringWithCanonicalMapping
             var bytes: [UInt8] = []
             for ch in s {
                 if let d = String(ch).data(using: Encodings.cp949) {
@@ -422,14 +467,6 @@ public enum ZipWriter {
             }
             return EncodedName(bytes: bytes, utf8: false, extra: extra)
         }
-    }
-
-    /// NFC(완성형)로 바꾸고 Windows 금지 문자를 _ 로 바꾼다.
-    private static func windowsSafe(_ path: String) -> String {
-        let nfc = path.precomposedStringWithCanonicalMapping
-        return String(nfc.map { ch -> Character in
-            ch != "/" && windowsForbidden.contains(ch) ? "_" : ch
-        })
     }
 }
 

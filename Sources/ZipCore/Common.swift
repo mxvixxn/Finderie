@@ -24,7 +24,7 @@ public enum NameEncoding: String, CaseIterable, Identifiable, Sendable {
     public var detail: String {
         switch self {
         case .windowsUTF8:
-            return "자모 분리 없이 완성형 한글로 저장하고 UTF-8 표시를 붙여요. Windows 10/11, Mac, 반디집, 7-Zip에서 모두 정상으로 보여요."
+            return "자모 분리 없이 완성형 한글로 저장하고 UTF-8 표시를 붙여요. Windows에서 못 쓰는 이름(: ? CON, 끝의 점 등)도 고쳐요. Windows 10/11, Mac, 반디집, 7-Zip에서 모두 정상으로 보여요."
         case .windowsCP949:
             return "Windows 7 이하나 오래된 압축 프로그램용이에요. CP949로 표현할 수 없는 글자(이모지 등)는 _ 로 바뀌어요."
         case .macDefault:

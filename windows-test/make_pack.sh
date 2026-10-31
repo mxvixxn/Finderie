@@ -14,6 +14,7 @@ cd "$TMP/src"
 "$CLI" zip mac   "$OLDPWD/zips/3_Mac기본방식_깨짐예상.zip" "한글 테스트"
 "$CLI" zip utf8  "$OLDPWD/zips/4_큰파일_조각압축.zip" "큰 로그 파일.log"
 "$CLI" zip utf8  "$OLDPWD/zips/5_영상_저장방식.zip" "영상 클립.mp4"
+"$CLI" zip utf8  "$OLDPWD/zips/8_금지이름_자동고침.zip" "윈도우 금지 이름"
 cd "$OLDPWD"
 python3 tools/make_zip64_data.py "$TMP/z64"
 (cd "$TMP/z64" && "$CLI" zip utf8 "$OLDPWD/zips/6_Zip64_4.5GB파일.zip" "4.5GB 대용량 파일.bin" && "$CLI" zip utf8 "$OLDPWD/zips/7_Zip64_7만개파일.zip" 칠만개)
